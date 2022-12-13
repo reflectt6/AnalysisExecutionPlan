@@ -14,8 +14,8 @@ def get_spark_logs(start_time='1940-01-01 00:00', end_time='2500-01-01 00:00', s
     :return:
     """
     (ret, logs_name, err) = run_cmd(['hdfs', 'dfs', '-ls', spark_history_path])
-    start_time = int(time.strptime(start_time, "%Y-%m-%d %H:%M")) - SECONDS_PER_MINUTE
-    end_time = int(time.strptime(end_time, "%Y-%m-%d %H:%M")) + SECONDS_PER_MINUTE
+    start_time = time_str_to_int(start_time) - SECONDS_PER_MINUTE
+    end_time = time_str_to_int(end_time) + SECONDS_PER_MINUTE
     yarn_logs = {}
     assert ret == 0
     for item in logs_name[1:]:
@@ -23,7 +23,7 @@ def get_spark_logs(start_time='1940-01-01 00:00', end_time='2500-01-01 00:00', s
         log_name = log_path.split('/')[-1]
         match = re.search(r'\d{4}-\d{2}-\d{2} \d{2}:\d{2}', item)
         if match and 'inprogress' not in log_path and 'local' not in log_path:
-            cur_time = int(time.strptime(match.group(), "%Y-%m-%d %H:%M"))
+            cur_time = time_str_to_int(match.group())
             if start_time < cur_time < end_time:
                 yarn_logs[log_name] = cur_time
     return yarn_logs
@@ -41,3 +41,13 @@ def run_cmd(command_list):
     ret = proc.returncode
     out = out.decode('utf-8').split('\n')
     return ret, out, err
+
+
+def time_str_to_int(time_str, ft='%Y-%m-%d %H:%M'):
+    """
+    时间字符串转时间戳
+    :param time_str: 时间字符串，例如：1940-01-01 00:00
+    :param ft: 时间格式，默认格式为：%Y-%m-%d %H:%M
+    :return:
+    """
+    return int(time.mktime(time.strptime(time_str, ft)))
