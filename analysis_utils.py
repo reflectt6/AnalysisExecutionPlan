@@ -1,18 +1,31 @@
 import subprocess
 import re
+import time
+
+SECONDS_PER_MINUTE = 60
 
 
-def get_yarn_logs(start_time=float('inf'), end_time=float('inf'), spark_history_path='/spark2-history'):
-    (ret, logs, err) = run_cmd(['hdfs', 'dfs', '-ls', spark_history_path])
+def get_spark_logs(start_time='1940-01-01 00：00', end_time='2500-01-01 00：00', spark_history_path='/spark2-history'):
+    """
+    获取spark日志
+    :param start_time: 日志开始时间段
+    :param end_time: 日志结束时间段
+    :param spark_history_path: spark日志存储路径
+    :return:
+    """
+    (ret, logs_name, err) = run_cmd(['hdfs', 'dfs', '-ls', spark_history_path])
+    start_time = time.strptime(start_time, "%Y-%m-%d %H:%M") - SECONDS_PER_MINUTE
+    end_time = time.strptime(end_time, "%Y-%m-%d %H:%M") + SECONDS_PER_MINUTE
     yarn_logs = {}
     assert ret == 0
-    for log in logs[1:]:
-        log_hdfs_path = log.split(':')[-1].split(' ')[-1]
-        match_str = re.search(r'\d{4}-\d{2}-\d{2} \d{2}:\d{2}', log)
-        if match_str and 'inprogress' not in log_hdfs_path and 'local' not in log_hdfs_path:
-            timestamp = match_str.group()
-            if start_time < timestamp < end_time:
-                yarn_logs[log_hdfs_path.split('/')[-1]] = timestamp
+    for item in logs_name[1:]:
+        log_path = item.split(' ')[-1]
+        log_name = log_path.split('/')[-1]
+        match = re.search(r'\d{4}-\d{2}-\d{2} \d{2}:\d{2}', item)
+        if match and 'inprogress' not in log_path and 'local' not in log_path:
+            cur_time = time.strptime(match.group(), "%Y-%m-%d %H:%M")
+            if start_time < cur_time < end_time:
+                yarn_logs[log_name] = cur_time
     return yarn_logs
 
 
