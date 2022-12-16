@@ -1,3 +1,4 @@
+import json
 import subprocess
 import re
 import time
@@ -5,7 +6,8 @@ import time
 SECONDS_PER_MINUTE = 60
 
 
-def get_spark_logs_name(start_time='1940-01-01 00:00', end_time='2500-01-01 00:00', spark_history_path='/spark2-history'):
+def get_spark_logs_name(start_time='1940-01-01 00:00', end_time='2500-01-01 00:00',
+                        spark_history_path='/spark2-history'):
     """
     获取spark日志
     :param start_time: 日志开始时间段
@@ -51,3 +53,17 @@ def time_str_to_int(time_str, ft='%Y-%m-%d %H:%M'):
     :return:
     """
     return int(time.mktime(time.strptime(time_str, ft)))
+
+
+def parse_history_json(history_json_path):
+    """
+    解析json获取spark任务信息，json的生成需要使用日志解析jar包（地址待补充）
+    :param history_json_path:
+    :return:
+    """
+    (ret, out, err) = run_cmd('hdfs', 'dfs', 'cat', history_json_path)
+    if ret != 0 or len(out) == 0 or out[0] == '[]':
+        return "", "", "", ""
+    a = json.loads(out[0])
+    b = a[0]
+    return b['original query'], b['node metrics'], b['physical plan'], b['dot metrics'], b['materialized views']
