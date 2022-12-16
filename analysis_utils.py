@@ -5,7 +5,7 @@ import time
 SECONDS_PER_MINUTE = 60
 
 
-def get_spark_logs(start_time='1940-01-01 00:00', end_time='2500-01-01 00:00', spark_history_path='/spark2-history'):
+def get_spark_logs_name(start_time='1940-01-01 00:00', end_time='2500-01-01 00:00', spark_history_path='/spark2-history'):
     """
     获取spark日志
     :param start_time: 日志开始时间段
@@ -16,7 +16,7 @@ def get_spark_logs(start_time='1940-01-01 00:00', end_time='2500-01-01 00:00', s
     (ret, logs_name, err) = run_cmd(['hdfs', 'dfs', '-ls', spark_history_path])
     start_time = time_str_to_int(start_time) - SECONDS_PER_MINUTE
     end_time = time_str_to_int(end_time) + SECONDS_PER_MINUTE
-    yarn_logs = {}
+    yarn_logs = []
     assert ret == 0
     for item in logs_name[1:]:
         log_path = item.split(' ')[-1]
@@ -25,7 +25,7 @@ def get_spark_logs(start_time='1940-01-01 00:00', end_time='2500-01-01 00:00', s
         if match and 'inprogress' not in log_path and 'local' not in log_path:
             cur_time = time_str_to_int(match.group())
             if start_time < cur_time < end_time:
-                yarn_logs[log_name] = cur_time
+                yarn_logs.append(log_name)
     return yarn_logs
 
 

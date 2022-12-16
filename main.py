@@ -3,4 +3,4 @@ from analysis_utils import *
 
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
-    yarn_logs = get_spark_logs()
+    logs_name = get_spark_logs_name()
