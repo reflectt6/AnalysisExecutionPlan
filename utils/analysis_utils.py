@@ -37,7 +37,7 @@ def run_cmd(command_list):
     :param command_list: 指令列表
     :return:返回值、输出、错误输出
     """
-    print('Running system command: {0}'.format(''.join(command_list)))
+    print('Running system command: {0}'.format(' '.join(command_list)))
     proc = subprocess.Popen(command_list, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out, err = proc.communicate()
     ret = proc.returncode
@@ -61,9 +61,25 @@ def parse_history_json(history_json_path):
     :param history_json_path:
     :return:
     """
-    (ret, out, err) = run_cmd('hdfs', 'dfs', 'cat', history_json_path)
+    (ret, out, err) = run_cmd(['hdfs', 'dfs', '-cat', history_json_path])
     if ret != 0 or len(out) == 0 or out[0] == '[]':
-        return "", "", "", ""
-    a = json.loads(out[0])
-    b = a[0]
-    return b['original query'], b['node metrics'], b['physical plan'], b['dot metrics'], b['materialized views']
+        return "", "", "", "", ""
+    jsons = json.loads(out[0])
+    # 一个执行计划中，每一条sql会被解析为一个json，这里默认一个任务中只有一条sql
+    first_json = jsons[0]
+    return first_json['original query'], first_json['node metrics'], first_json['physical plan'], \
+        first_json['dot metrics'], first_json['materialized views']
+
+
+def parse_node_info(physical_plan):
+    """
+    解析physical_plan文件,该文件结构如下：
+    1、物理计划图
+    2、每个节点的详细信息，主要包括输入，输出，filter等结构信息
+    3、subgraph的存储关系
+    :param physical_plan:
+    :return:
+    """
+    context = iter(physical_plan[physical_plan.find('\n(1)') + 1:].split('\r\n'))
+    # for line in context:
+
