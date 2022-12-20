@@ -80,6 +80,11 @@ def parse_node_info(physical_plan):
     :param physical_plan:
     :return:
     """
-    context = iter(physical_plan[physical_plan.find('\n(1)') + 1:].split('\r\n'))
-    # for line in context:
+    contexts = iter(physical_plan[physical_plan.find('\n(1)') + 1:].split('\n\n'))
+    nodes = []
+    reg_name = r'(\d) .* [*'
+    for context in contexts:
+        lines = context.split('\n')
+        SparkPhysicalNode = ()
 
+    return nodes
