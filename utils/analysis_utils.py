@@ -116,7 +116,7 @@ def get_node_structure(lines):
     para = {}
     for line in lines:
         # line = str(len)
-        head = re.match(rf"([A-Za-z]+)( \[\d+])*:", line)
+        head = re.match(rf"([A-Za-z]+) *(\[\d+])*:", line)
         if head is None:
             print_err_info(f"line:<{line}> 无法提取字段头. ")
             continue
