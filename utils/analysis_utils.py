@@ -162,12 +162,12 @@ def parse_physical_plan(lines):
 
 
 def parse_node_metrics(node_metrics):
-    start_size = len("[PlanMetric]")
+    start_size = len("[PlanMetric]\n")
     edge_tag = re.search(r"  \d->\d;", node_metrics)
     subgraph_tag = re.search(r"\[SubGraph]\n", node_metrics)
     assert (edge_tag is not None)
     assert (subgraph_tag is not None)
-    metrics = node_metrics[start_size:edge_tag.span()[0] - 3].split('\n\n\n')
+    metrics = node_metrics[start_size:edge_tag.span()[0] - 4].split('\n\n\n\n')
     edge = node_metrics[edge_tag.span()[0]:subgraph_tag.span()[0]]
     subgraph = node_metrics[subgraph_tag.span()[1]:]
     metric_nodes = parse_metrics_text(metrics)
@@ -175,7 +175,7 @@ def parse_node_metrics(node_metrics):
 
 
 def parse_metrics_text(metrics):
-    metric_nodes = []
+    metric_nodes = {}
     for metric in metrics:
         lines = metric.split('\n')
         start_id = lines[0].find('id:')
@@ -183,14 +183,21 @@ def parse_metrics_text(metrics):
         start_desc = lines[0].find('desc:')
         nid = lines[0][start_id + len('id:'): start_name].strip()
         name = lines[0][start_name + len('name:'): start_desc].strip()
-        desc = lines[0][start_desc + len('desc'):].strip()
+        desc = lines[0][start_desc + len('desc:'):].strip()
         # TODO[后续处理时间信息]
         info = lines[1:]
-        metric_nodes.append(MetricNode(nid, name, desc, info))
+        metric_nodes[nid] = (MetricNode(nid, name, desc, info))
     return metric_nodes
 
 
 def build_tree_with_edge_text(edge, metric_nodes):
+    item = re.search(r"\d->\d", edge)
+    while item is not None:
+        relation = item.group().split('->')
+        metric_nodes[relation[0]].parents_node.append(relation[1])
+        metric_nodes[relation[1]].children_node.append(relation[0])
+        edge = edge[item.span()[1]:]
+        item = re.search(r"\d->\d", edge)
     print()
 
 
