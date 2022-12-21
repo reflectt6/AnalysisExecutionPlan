@@ -3,7 +3,7 @@ import subprocess
 import re
 import time
 
-from utils.physical_node import SparkPhysicalNode
+from utils.physical_node import PhysicalPlanNode, MetricNode
 
 SECONDS_PER_MINUTE = 60
 
@@ -57,7 +57,7 @@ def time_str_to_int(time_str, ft='%Y-%m-%d %H:%M'):
     return int(time.mktime(time.strptime(time_str, ft)))
 
 
-def parse_history_json(history_json_path):
+def get_history_json(history_json_path):
     """
     解析json获取spark任务信息，json的生成需要使用日志解析jar包（地址待补充）
     :param history_json_path:
@@ -73,7 +73,7 @@ def parse_history_json(history_json_path):
         first_json['dot metrics'], first_json['materialized views']
 
 
-def parse_node_info(physical_plan):
+def get_node_info(physical_plan):
     """
     解析physical_plan文件,该文件结构如下：
     1、物理计划图
@@ -98,12 +98,12 @@ def parse_node_info(physical_plan):
             end = len(lines[0])
         name = lines[0][start:end]
         # get parameter
-        para = get_node_structure(lines[1:])
-        nodes.append(SparkPhysicalNode(name, para))
+        para = parse_physical_plan(lines[1:])
+        nodes.append(PhysicalPlanNode(name, para))
     return nodes
 
 
-def get_node_structure(lines):
+def parse_physical_plan(lines):
     def processing_bracket(string):
         # 只处理带中括号的
         if '[' not in string:
@@ -118,7 +118,7 @@ def get_node_structure(lines):
         # line = str(len)
         head = re.match(r"([A-Za-z]+( [A-Za-z]+)*) *(\[\d+])*:", line)
         if head is None:
-            print_err_info(f"line:<{line}> 无法提取字段头. ")
+            print_err_info(f"line:<{line}> Unable to extract field headers. ")
             continue
         head = head.group()
         if line.startswith('Output'):
@@ -128,7 +128,7 @@ def get_node_structure(lines):
         elif line.startswith('Batched'):
             para['Batched'] = line.replace(head, '')
         elif line.startswith('Arguments'):
-            # TODO 情况复杂，需要完善
+            # TODO[node structure]情况复杂，需要完善
             para['Arguments'] = line.replace(head, '').split(', ')
         elif line.startswith('Result'):
             para['Result'] = processing_bracket(line.replace(head, ''))
@@ -145,7 +145,7 @@ def get_node_structure(lines):
         elif line.startswith('Right keys'):
             para['Right keys'] = processing_bracket(line.replace(head, ''))
         elif line.startswith('Condition'):
-            # TODO
+            # TODO[node structure]
             para['Condition'] = processing_bracket(line.replace(head, ''))
         elif line.startswith('ReadSchema'):
             para['ReadSchema'] = line.replace(head, '')
@@ -156,9 +156,42 @@ def get_node_structure(lines):
         elif line.startswith('PartitionFilters'):
             para['PartitionFilters'] = processing_bracket(line.replace(head, ''))
         else:
-            print_err_info(f"line:<{line}> 未考虑的字段头.")
+            print_err_info(f"line:<{line}> Unconsidered field header.")
             continue
     return para
+
+
+def parse_node_metrics(node_metrics):
+    start_size = len("[PlanMetric]")
+    edge_tag = re.search(r"  \d->\d;", node_metrics)
+    subgraph_tag = re.search(r"\[SubGraph]\n", node_metrics)
+    assert (edge_tag is not None)
+    assert (subgraph_tag is not None)
+    metrics = node_metrics[start_size:edge_tag.span()[0] - 3].split('\n\n\n')
+    edge = node_metrics[edge_tag.span()[0]:subgraph_tag.span()[0]]
+    subgraph = node_metrics[subgraph_tag.span()[1]:]
+    metric_nodes = parse_metrics_text(metrics)
+    build_tree_with_edge_text(edge, metric_nodes)
+
+
+def parse_metrics_text(metrics):
+    metric_nodes = []
+    for metric in metrics:
+        lines = metric.split('\n')
+        start_id = lines[0].find('id:')
+        start_name = lines[0].find('name:')
+        start_desc = lines[0].find('desc:')
+        nid = lines[0][start_id + len('id:'): start_name].strip()
+        name = lines[0][start_name + len('name:'): start_desc].strip()
+        desc = lines[0][start_desc + len('desc'):].strip()
+        # TODO[后续处理时间信息]
+        info = lines[1:]
+        metric_nodes.append(MetricNode(nid, name, desc, info))
+    return metric_nodes
+
+
+def build_tree_with_edge_text(edge, metric_nodes):
+    print()
 
 
 def print_err_info(info):

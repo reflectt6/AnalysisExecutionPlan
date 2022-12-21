@@ -9,5 +9,7 @@ if __name__ == '__main__':
     logs_name = get_spark_logs_name()
     for log_name in logs_name:
         history_json_path = f"{HISTORY_JSON_PATH}/{log_name}.json"
-        _, node_metrics, physical_plan, _, _ = parse_history_json(history_json_path)
-        nodes = parse_node_info(physical_plan)
+        _, node_metrics, physical_plan, _, _ = get_history_json(history_json_path)
+        nodes = parse_physical_plan(physical_plan)
+        tree = parse_node_metrics(node_metrics)
+
