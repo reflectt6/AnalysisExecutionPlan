@@ -83,11 +83,11 @@ def parse_node_info(physical_plan):
     :return:
     """
     # remove physical tree
-    contexts = physical_plan[physical_plan.find('\n(1)') + 1:]
+    contexts = physical_plan[physical_plan.find('\n(1)') + 1:].strip('\n')
     # remove Subqueries
     sub_num = contexts.find("===== Subqueries =====")
     if sub_num != -1:
-        contexts = contexts[:sub_num]
+        contexts = contexts[:sub_num].strip('\n')
     nodes = []
     for context in contexts.split('\n\n'):
         # get name
@@ -120,6 +120,7 @@ def get_node_structure(lines):
         if head is None:
             print_err_info(f"line:<{line}> 无法提取字段头. ")
             continue
+        head = head.group()
         if line.startswith('Output'):
             para['Output'] = processing_bracket(line.replace(head, ''))
         elif line.startswith('Input'):
