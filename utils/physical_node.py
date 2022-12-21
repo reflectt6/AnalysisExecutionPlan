@@ -1,7 +1,8 @@
 class SparkPhysicalNode(object):
-    def __init__(self, nid, name):
-        self.children_node = []
-        self.parents_node = []
-        self.id = nid
+    children_node = []
+    parents_node = []
+    id = -1
+
+    def __init__(self, name, para):
         self.name = name
-        self.para = ()
+        self.para = para

@@ -10,5 +10,4 @@ if __name__ == '__main__':
     for log_name in logs_name:
         history_json_path = f"{HISTORY_JSON_PATH}/{log_name}.json"
         _, node_metrics, physical_plan, _, _ = parse_history_json(history_json_path)
-        parse_node_info(physical_plan)
-
+        nodes = parse_node_info(physical_plan)

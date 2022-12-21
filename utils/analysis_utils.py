@@ -3,6 +3,8 @@ import subprocess
 import re
 import time
 
+from utils.physical_node import SparkPhysicalNode
+
 SECONDS_PER_MINUTE = 60
 
 
@@ -80,11 +82,84 @@ def parse_node_info(physical_plan):
     :param physical_plan:
     :return:
     """
-    contexts = iter(physical_plan[physical_plan.find('\n(1)') + 1:].split('\n\n'))
+    # remove physical tree
+    contexts = physical_plan[physical_plan.find('\n(1)') + 1:]
+    # remove Subqueries
+    sub_num = contexts.find("===== Subqueries =====")
+    if sub_num != -1:
+        contexts = contexts[:sub_num]
     nodes = []
-    reg_name = r'(\d) .* [*'
-    for context in contexts:
+    for context in contexts.split('\n\n'):
+        # get name
         lines = context.split('\n')
-        SparkPhysicalNode = ()
-
+        start = lines[0].find(')') + 2
+        end = lines[0].find('[')
+        if end == -1:
+            end = len(lines[0])
+        name = lines[0][start:end]
+        # get parameter
+        para = get_node_structure(lines[1:])
+        nodes.append(SparkPhysicalNode(name, para))
     return nodes
+
+
+def get_node_structure(lines):
+    def processing_bracket(string):
+        # 只处理带中括号的
+        if '[' not in string:
+            return string
+        stan = string.strip(' ').strip('[').strip(']')
+        if ',' in stan:
+            return stan.split(',')
+        return stan
+
+    para = {}
+    for line in lines:
+        # line = str(len)
+        head = re.match(rf"([A-Za-z]+)( \[\d+])*:", line)
+        if head is None:
+            print_err_info(f"line:<{line}> 无法提取字段头. ")
+            continue
+        if line.startswith('Output'):
+            para['Output'] = processing_bracket(line.replace(head, ''))
+        elif line.startswith('Input'):
+            para['Input'] = processing_bracket(line.replace(head, ''))
+        elif line.startswith('Batched'):
+            para['Batched'] = line.replace(head, '')
+        elif line.startswith('Arguments'):
+            # TODO 情况复杂，需要完善
+            para['Arguments'] = line.replace(head, '').split(', ')
+        elif line.startswith('Result'):
+            para['Result'] = processing_bracket(line.replace(head, ''))
+        elif line.startswith('Aggregate Attributes'):
+            para['Aggregate Attributes'] = processing_bracket(line.replace(head, ''))
+        elif line.startswith('Functions'):
+            para['Functions'] = processing_bracket(line.replace(head, ''))
+        elif line.startswith('Keys'):
+            para['Keys'] = processing_bracket(line.replace(head, ''))
+        elif line.startswith('Join condition:'):
+            para['Keys'] = processing_bracket(line.replace(head, ''))
+        elif line.startswith('Left keys'):
+            para['Left keys'] = processing_bracket(line.replace(head, ''))
+        elif line.startswith('Right keys'):
+            para['Right keys'] = processing_bracket(line.replace(head, ''))
+        elif line.startswith('Condition'):
+            # TODO
+            para['Condition'] = processing_bracket(line.replace(head, ''))
+        elif line.startswith('ReadSchema'):
+            para['ReadSchema'] = line.replace(head, '')
+        elif line.startswith('PushedFilters'):
+            para['PushedFilters'] = processing_bracket(line.replace(head, ''))
+        elif line.startswith('Location'):
+            para['Location'] = line.replace(head, '').split(' ')[2].strip('[').strip(']')
+        elif line.startswith('PartitionFilters'):
+            para['PartitionFilters'] = processing_bracket(line.replace(head, ''))
+        else:
+            print_err_info(f"line:<{line}> 未考虑的字段头.")
+            continue
+    return para
+
+
+def print_err_info(info):
+    print('\033[1;31;40m' + 'error occur' + '\033[0m')
+    print('\033[1;31;40m' + info + '\033[0m')
