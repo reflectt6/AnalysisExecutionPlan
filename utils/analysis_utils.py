@@ -186,18 +186,18 @@ def parse_metrics_text(metrics):
         desc = lines[0][start_desc + len('desc:'):].strip()
         # TODO[后续处理时间信息]
         info = lines[1:]
-        metric_nodes[nid] = (MetricNode(nid, name, desc, info))
+        metric_nodes[nid] = MetricNode(nid, name, desc, info)
     return metric_nodes
 
 
 def build_tree_with_edge_text(edge, metric_nodes):
-    item = re.search(r"\d->\d", edge)
+    item = re.search(r"\d+->\d+", edge)
     while item is not None:
         relation = item.group().split('->')
         metric_nodes[relation[0]].parents_node.append(relation[1])
         metric_nodes[relation[1]].children_node.append(relation[0])
         edge = edge[item.span()[1]:]
-        item = re.search(r"\d->\d", edge)
+        item = re.search(r"\d+->\d+", edge)
     print()
 
 
