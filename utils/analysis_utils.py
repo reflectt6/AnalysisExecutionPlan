@@ -212,7 +212,7 @@ def parse_metric_desc(name, desc):
     para = {}
     if "FileScan" in desc:
         # 处理file scan的情况
-        scan_tag = re.search(r"FileScan .+\[.*] ", desc)
+        scan_tag = re.search(r"FileScan .+\[.*?] ", desc)
         assert scan_tag is not None
         para[Attribute.OUTPUT.value] = parse_bracket_list('[' + scan_tag.group().split('[')[1])
         desc = desc[scan_tag.span()[1]:]
@@ -236,11 +236,11 @@ def parse_metric_desc(name, desc):
         para[Attribute.ARGUMENTS.value] = canonicalize(desc.replace(name, ""))
     elif "SortMergeJoin" == name or "BroadcastHashJoin" == name:
         infos = canonicalize(desc.replace(name, ""))
-        left_keys = re.search(r"\[.*], ", infos)
+        left_keys = re.search(r"\[.*?], ", infos)
         assert left_keys is not None
         para[Attribute.LEFT_KEYS.value] = parse_bracket_list(canonicalize(left_keys.group()))
         infos = infos[left_keys.span()[1]:]
-        right_keys = re.search(r"\[.*], ", infos)
+        right_keys = re.search(r"\[.*?], ", infos)
         assert right_keys is not None
         para[Attribute.RIGHT_KEYS.value] = parse_bracket_list(canonicalize(right_keys.group()))
         infos = infos[right_keys.span()[1]:]
@@ -253,14 +253,14 @@ def parse_metric_desc(name, desc):
         if has_condition is not None:
             para[Attribute.JOIN_CONDITION.value] = has_condition.group()
     elif "HashAggregate" == name or "TakeOrderedAndProject" == name:
-        key_value = re.search(r"\w+=\[.*]", desc)
+        key_value = re.search(r"\w+=\[.*?]", desc)
         while key_value is not None:
             key = get_attribute_enum(key_value.group().split('=')[0])
-            assert key is not None
-            value = parse_bracket_list(key_value.group().split('=')[1])
-            para[key.value] = value
+            if key is not None:
+                value = parse_bracket_list(key_value.group().split('=')[1])
+                para[key.value] = value
             desc = desc[key_value.span()[1]:]
-            key_value = re.search(r"\w+=\[.*]", desc)
+            key_value = re.search(r"\w+=\[.*?]", desc)
     else:
         print_err_info(f"[metrics error] {name} is not considered.")
     return para
