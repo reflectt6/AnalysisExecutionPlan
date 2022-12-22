@@ -204,7 +204,10 @@ def parse_metric_desc(name, desc):
     :param desc:
     :return:
     """
-    if "SubqueryBroadcast" or "ReusedExchange" or "ColumnarToRow" or "WholeStageCodegen" in desc:
+    if "SubqueryBroadcast" in desc or \
+            "ReusedExchange" in desc or \
+            "ColumnarToRow" in desc or \
+            "WholeStageCodegen" in desc:
         return desc
     para = {}
     if "FileScan" in desc:
@@ -231,7 +234,7 @@ def parse_metric_desc(name, desc):
         para[Attribute.ARGUMENTS.value] = canonicalize(desc.replace(name, ""))
     elif "BroadcastExchange" in name:
         para[Attribute.ARGUMENTS.value] = canonicalize(desc.replace(name, ""))
-    elif "SortMergeJoin" or "BroadcastHashJoin" in name:
+    elif "SortMergeJoin" in name or "BroadcastHashJoin" in name:
         infos = canonicalize(desc.replace(name, ""))
         left_keys = re.search(r"\[.*], ", infos)
         assert left_keys is not None
@@ -249,7 +252,7 @@ def parse_metric_desc(name, desc):
         has_condition = re.search(r"(\(.*\)){1}", infos)
         if has_condition is not None:
             para[Attribute.JOIN_CONDITION.value] = has_condition.group()
-    elif "HashAggregate" or "TakeOrderedAndProject" in name:
+    elif "HashAggregate" in name or "TakeOrderedAndProject" in name:
         key_value = re.search(r"\w+=\[.*]", desc)
         while key_value is not None:
             key = get_attribute_enum(key_value.group().split('=')[0])
