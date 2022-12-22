@@ -157,22 +157,24 @@ def get_node_structure(physical_plan):
     return nodes
 
 
-def get_node_metrics(node_metrics):
+def get_node_metrics(metrics_nodes):
     """
     解析node_metrics文件，树节点关系、子图关系、以及运行代价信息
-    :param node_metrics:
+    :param metrics_nodes:
     :return:
     """
     start_size = len("[PlanMetric]\n")
-    edge_tag = re.search(r"  \d->\d;", node_metrics)
-    subgraph_tag = re.search(r"\[SubGraph]\n", node_metrics)
+    edge_tag = re.search(r"  \d->\d;", metrics_nodes)
+    subgraph_tag = re.search(r"\[SubGraph]\n", metrics_nodes)
     assert (edge_tag is not None)
     assert (subgraph_tag is not None)
-    metrics = node_metrics[start_size:edge_tag.span()[0] - 4].split('\n\n\n\n')
-    edge = node_metrics[edge_tag.span()[0]:subgraph_tag.span()[0]]
-    subgraph = node_metrics[subgraph_tag.span()[1]:]
+    metrics = metrics_nodes[start_size:edge_tag.span()[0] - 4].split('\n\n\n\n')
+    edge = metrics_nodes[edge_tag.span()[0]:subgraph_tag.span()[0]]
+    # TODO [subgraph]
+    subgraph = metrics_nodes[subgraph_tag.span()[1]:]
     metric_nodes = parse_metrics_text(metrics)
     build_tree_with_edge_text(edge, metric_nodes)
+    return metric_nodes
 
 
 def parse_metrics_text(metrics):
@@ -190,10 +192,16 @@ def parse_metrics_text(metrics):
         nid = lines[0][start_id + len('id:'): start_name].strip()
         name = lines[0][start_name + len('name:'): start_desc].strip()
         desc = lines[0][start_desc + len('desc:'):].strip()
-        tmp = parse_metric_desc(name, desc)
+        desc = parse_metric_desc(name, desc)
         # TODO[后续处理时间信息]
         info = lines[1:]
-        metric_nodes[nid] = MetricNode(nid, name, desc, info)
+        ins_node = MetricNode(nid, name, desc, info)
+        metric_nodes[nid] = ins_node
+        # cache
+        if MetricNode.node_cache.get(name) is None:
+            MetricNode.node_cache[name] = [ins_node]
+        else:
+            MetricNode.node_cache.get(name).append[ins_node]
     return metric_nodes
 
 
@@ -207,7 +215,8 @@ def parse_metric_desc(name, desc):
     if "SubqueryBroadcast" == name or \
             "ReusedExchange" == name or \
             "ColumnarToRow" == name or \
-            "WholeStageCodegen" == name:
+            "WholeStageCodegen" in name or \
+            "Sort" == name:
         return desc
     para = {}
     if "FileScan" in desc:

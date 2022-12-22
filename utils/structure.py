@@ -8,6 +8,7 @@ class PhysicalPlanNode(object):
 
 
 class MetricNode(object):
+    node_cache = {}
 
     def __init__(self, nid, name, desc, time_info):
         self.nid = nid
@@ -36,4 +37,3 @@ class Attribute(Enum):
     LOCATION = 'Location'
     PARTITION_FILTERS = 'PartitionFilters'
     JOIN_TYPE = 'Join Type'
-
