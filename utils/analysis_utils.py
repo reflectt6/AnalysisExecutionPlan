@@ -98,39 +98,39 @@ def get_node_structure(physical_plan):
                 continue
             head = head.group()
             if line.startswith('Output'):
-                parameter[Attribute.OUTPUT.value] = processing_bracket_list(line.replace(head, ''))
+                parameter[Attribute.OUTPUT.value] = parse_bracket_list(line.replace(head, ''))
             elif line.startswith('Input'):
-                parameter[Attribute.INPUT.value] = processing_bracket_list(line.replace(head, ''))
+                parameter[Attribute.INPUT.value] = parse_bracket_list(line.replace(head, ''))
             elif line.startswith('Batched'):
                 parameter[Attribute.BATCHED.value] = line.replace(head, '').strip()
             elif line.startswith('Arguments'):
                 # TODO[node structure]情况复杂，需要完善（当前策略就是不解析，后面和metrics做匹配也方便）
                 parameter[Attribute.ARGUMENTS.value] = line.replace(head, '').strip()
             elif line.startswith('Result'):
-                parameter[Attribute.RESULT.value] = processing_bracket_list(line.replace(head, ''))
+                parameter[Attribute.RESULT.value] = parse_bracket_list(line.replace(head, ''))
             elif line.startswith('Aggregate Attributes'):
-                parameter[Attribute.AGGREGATE.value] = processing_bracket_list(line.replace(head, ''))
+                parameter[Attribute.AGGREGATE.value] = parse_bracket_list(line.replace(head, ''))
             elif line.startswith('Functions'):
-                parameter[Attribute.FUNCTION.value] = processing_bracket_list(line.replace(head, ''))
+                parameter[Attribute.FUNCTION.value] = parse_bracket_list(line.replace(head, ''))
             elif line.startswith('Keys'):
-                parameter[Attribute.KEYS.value] = processing_bracket_list(line.replace(head, ''))
+                parameter[Attribute.KEYS.value] = parse_bracket_list(line.replace(head, ''))
             elif line.startswith('Join condition'):
-                parameter[Attribute.JOIN_CONDITION.value] = processing_bracket_list(line.replace(head, ''))
+                parameter[Attribute.JOIN_CONDITION.value] = parse_bracket_list(line.replace(head, ''))
             elif line.startswith('Left keys'):
-                parameter[Attribute.LEFT_KEYS.value] = processing_bracket_list(line.replace(head, ''))
+                parameter[Attribute.LEFT_KEYS.value] = parse_bracket_list(line.replace(head, ''))
             elif line.startswith('Right keys'):
-                parameter[Attribute.RIGHT_KEYS.value] = processing_bracket_list(line.replace(head, ''))
+                parameter[Attribute.RIGHT_KEYS.value] = parse_bracket_list(line.replace(head, ''))
             elif line.startswith('Condition'):
                 # TODO[node structure]
-                parameter[Attribute.CONDITION.value] = processing_bracket_list(line.replace(head, ''))
+                parameter[Attribute.CONDITION.value] = parse_bracket_list(line.replace(head, ''))
             elif line.startswith('ReadSchema'):
                 parameter[Attribute.READ_SCHEMA.value] = line.replace(head, '').strip()
             elif line.startswith('PushedFilters'):
-                parameter[Attribute.PUSHED_FILTERS.value] = processing_bracket_list(line.replace(head, ''))
+                parameter[Attribute.PUSHED_FILTERS.value] = parse_bracket_list(line.replace(head, ''))
             elif line.startswith('Location'):
                 parameter[Attribute.LOCATION.value] = line.replace(head, '').split(' ')[2].strip('[').strip(']')
             elif line.startswith('PartitionFilters'):
-                parameter[Attribute.PARTITION_FILTERS.value] = processing_bracket_list(line.replace(head, ''))
+                parameter[Attribute.PARTITION_FILTERS.value] = parse_bracket_list(line.replace(head, ''))
             else:
                 print_err_info(f"line:<{line}> Unconsidered field header.")
                 continue
@@ -190,37 +190,77 @@ def parse_metrics_text(metrics):
         nid = lines[0][start_id + len('id:'): start_name].strip()
         name = lines[0][start_name + len('name:'): start_desc].strip()
         desc = lines[0][start_desc + len('desc:'):].strip()
-        parse_metric_desc(desc)
+        tmp = parse_metric_desc(name, desc)
         # TODO[后续处理时间信息]
         info = lines[1:]
         metric_nodes[nid] = MetricNode(nid, name, desc, info)
     return metric_nodes
 
 
-def parse_metric_desc(desc):
+def parse_metric_desc(name, desc):
     """
     解析代价信息中的node tag，用来和结构信息对应
+    :param name:
     :param desc:
     :return:
     """
+    if "SubqueryBroadcast" or "ReusedExchange" or "ColumnarToRow" or "WholeStageCodegen" in desc:
+        return desc
     para = {}
     if "FileScan" in desc:
         # 处理file scan的情况
         scan_tag = re.search(r"FileScan .+\[.*] ", desc)
         assert scan_tag is not None
-        para[Attribute.OUTPUT.value] = processing_bracket_list('[' + scan_tag.group().split('[')[1])
+        para[Attribute.OUTPUT.value] = parse_bracket_list('[' + scan_tag.group().split('[')[1])
         desc = desc[scan_tag.span()[1]:]
         front = re.search(r"\w+: ", desc)
         while front is not None:
             desc = desc[front.span()[1]:]
             behind = re.search(r"\w+: ", desc)
             if behind is not None:
-                para[front.group().replace(":", "").strip()] = canonicalize(desc[:behind.span()[0]])
+                para[canonicalize(front.group())] = canonicalize(desc[:behind.span()[0]])
                 front = behind
             else:
-                para[front.group().replace(":", "").strip()] = desc
+                para[canonicalize(front.group())] = desc
                 break
-        print()
+    elif "Filter" in name:
+        para[Attribute.CONDITION.value] = canonicalize(desc.replace(name, ""))
+    elif "Project" in name:
+        para[Attribute.OUTPUT.value] = parse_bracket_list(desc.replace(name, ""))
+    elif "Exchange" in name:
+        para[Attribute.ARGUMENTS.value] = canonicalize(desc.replace(name, ""))
+    elif "BroadcastExchange" in name:
+        para[Attribute.ARGUMENTS.value] = canonicalize(desc.replace(name, ""))
+    elif "SortMergeJoin" or "BroadcastHashJoin" in name:
+        infos = canonicalize(desc.replace(name, ""))
+        left_keys = re.search(r"\[.*], ", infos)
+        assert left_keys is not None
+        para[Attribute.LEFT_KEYS.value] = parse_bracket_list(canonicalize(left_keys.group()))
+        infos = infos[left_keys.span()[1]:]
+        right_keys = re.search(r"\[.*], ", infos)
+        assert right_keys is not None
+        para[Attribute.RIGHT_KEYS.value] = parse_bracket_list(canonicalize(right_keys.group()))
+        infos = infos[right_keys.span()[1]:]
+        has_next = re.search(r", ", infos)
+        if has_next is not None:
+            para[Attribute.JOIN_TYPE.value] = canonicalize(infos[:has_next.span()[0]])
+        else:
+            para[Attribute.JOIN_TYPE.value] = canonicalize(infos)
+        has_condition = re.search(r"(\(.*\)){1}", infos)
+        if has_condition is not None:
+            para[Attribute.JOIN_CONDITION.value] = has_condition.group()
+    elif "HashAggregate" or "TakeOrderedAndProject" in name:
+        key_value = re.search(r"\w+=\[.*]", desc)
+        while key_value is not None:
+            key = get_attribute_enum(key_value.group().split('=')[0])
+            assert key is not None
+            value = parse_bracket_list(key_value.group().split('=')[1])
+            para[key.value] = value
+            desc = desc[key_value.span()[1]:]
+            key_value = re.search(r"\w+=\[.*]", desc)
+    else:
+        print_err_info(f"[metrics error] {name} is not considered.")
+    return para
 
 
 def build_tree_with_edge_text(edge, metric_nodes):
@@ -233,7 +273,7 @@ def build_tree_with_edge_text(edge, metric_nodes):
         item = re.search(r"\d+->\d+", edge)
 
 
-def processing_bracket_list(string):
+def parse_bracket_list(string):
     """
     处理用中括号[]括起来的列表
     :param string:
@@ -259,7 +299,20 @@ def canonicalize(item):
     :return:
     """
     if isinstance(item, str):
-        return item.strip('..., ').strip('...,').strip(' :').strip(': ') \
-            .strip(', ').strip(' ,').strip(' ').strip(',').strip(':')
+        return item.strip('..., ').strip('...,').strip('...').strip(' :') \
+            .strip(': ').strip(', ').strip(' ,').strip(' ').strip(',').strip(':')
     else:
         return item
+
+
+def get_attribute_enum(string):
+    """
+    获取字符串对应的枚举类
+    :param string:
+    :return:
+    """
+    if isinstance(string, str):
+        for attr in Attribute:
+            if string.lower() == attr.value.lower():
+                return attr
+    return None

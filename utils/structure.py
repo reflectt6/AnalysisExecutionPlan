@@ -35,4 +35,5 @@ class Attribute(Enum):
     PUSHED_FILTERS = 'PushedFilters'
     LOCATION = 'Location'
     PARTITION_FILTERS = 'PartitionFilters'
+    JOIN_TYPE = 'Join Type'
 
