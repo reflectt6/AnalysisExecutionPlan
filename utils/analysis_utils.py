@@ -210,12 +210,12 @@ def parse_metric_desc(desc):
         assert scan_tag is not None
         para[Attribute.OUTPUT.value] = processing_bracket_list('[' + scan_tag.group().split('[')[1])
         desc = desc[scan_tag.span()[1]:]
-        front = re.search(r"\d+: ", desc)
+        front = re.search(r"\w+: ", desc)
         while front is not None:
             desc = desc[front.span()[1]:]
-            behind = re.search(r"\d+: ", desc)
+            behind = re.search(r"\w+: ", desc)
             if behind is not None:
-                para[front.group().replace(":", "").strip()] = desc[:behind.span()[0]]
+                para[front.group().replace(":", "").strip()] = canonicalize(desc[:behind.span()[0]])
                 front = behind
             else:
                 para[front.group().replace(":", "").strip()] = desc
@@ -251,3 +251,12 @@ def processing_bracket_list(string):
 def print_err_info(info):
     print('\033[1;31;40m' + 'error occur' + '\033[0m')
     print('\033[1;31;40m' + info + '\033[0m')
+
+
+def canonicalize(item):
+    """
+    规范化字符串
+    :return:
+    """
+    return item.strip.strip('..., ').strip('...,').strip(' :').strip(': ') \
+        .strip(', ').strip(' ,').strip(' ').strip(',').strip(':')
