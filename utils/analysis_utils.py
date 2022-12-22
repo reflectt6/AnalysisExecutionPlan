@@ -73,7 +73,7 @@ def get_history_json(history_json_path):
         first_json['dot metrics'], first_json['materialized views']
 
 
-def get_node_info(physical_plan):
+def get_node_structure(physical_plan):
     """
     解析physical_plan文件,该文件结构如下：
     1、物理计划图
@@ -82,6 +82,60 @@ def get_node_info(physical_plan):
     :param physical_plan:
     :return:
     """
+
+    def parse_physical_plan(node_structure):
+        """
+        解析 ·删掉physical_plan前面的树形图和后面的subgraph之后· 剩余的结构信息
+        :param node_structure:
+        :return:
+        """
+        parameter = {}
+        for line in node_structure:
+            # line = str(len)
+            head = re.match(r"([A-Za-z]+( [A-Za-z]+)*) *(\[\d+])*:", line)
+            if head is None:
+                print_err_info(f"line:<{line}> Unable to extract field headers. ")
+                continue
+            head = head.group()
+            if line.startswith('Output'):
+                parameter[Attribute.OUTPUT.name] = processing_bracket_list(line.replace(head, ''))
+            elif line.startswith('Input'):
+                parameter[Attribute.INPUT.name] = processing_bracket_list(line.replace(head, ''))
+            elif line.startswith('Batched'):
+                parameter[Attribute.BATCHED.name] = line.replace(head, '').strip()
+            elif line.startswith('Arguments'):
+                # TODO[node structure]情况复杂，需要完善（当前策略就是不解析，后面和metrics做匹配也方便）
+                parameter[Attribute.ARGUMENTS.name] = line.replace(head, '').strip()
+            elif line.startswith('Result'):
+                parameter[Attribute.RESULT.name] = processing_bracket_list(line.replace(head, ''))
+            elif line.startswith('Aggregate Attributes'):
+                parameter[Attribute.AGGREGATE.name] = processing_bracket_list(line.replace(head, ''))
+            elif line.startswith('Functions'):
+                parameter[Attribute.FUNCTION.name] = processing_bracket_list(line.replace(head, ''))
+            elif line.startswith('Keys'):
+                parameter[Attribute.KEYS.name] = processing_bracket_list(line.replace(head, ''))
+            elif line.startswith('Join condition'):
+                parameter[Attribute.JOIN_CONDITION.name] = processing_bracket_list(line.replace(head, ''))
+            elif line.startswith('Left keys'):
+                parameter[Attribute.LEFT_KEYS.name] = processing_bracket_list(line.replace(head, ''))
+            elif line.startswith('Right keys'):
+                parameter[Attribute.RIGHT_KEYS.name] = processing_bracket_list(line.replace(head, ''))
+            elif line.startswith('Condition'):
+                # TODO[node structure]
+                parameter[Attribute.CONDITION.name] = processing_bracket_list(line.replace(head, ''))
+            elif line.startswith('ReadSchema'):
+                parameter[Attribute.READ_SCHEMA.name] = line.replace(head, '').strip()
+            elif line.startswith('PushedFilters'):
+                parameter[Attribute.PUSHED_FILTERS.name] = processing_bracket_list(line.replace(head, ''))
+            elif line.startswith('Location'):
+                parameter[Attribute.LOCATION.name] = line.replace(head, '').split(' ')[2].strip('[').strip(']')
+            elif line.startswith('PartitionFilters'):
+                parameter[Attribute.PARTITION_FILTERS.name] = processing_bracket_list(line.replace(head, ''))
+            else:
+                print_err_info(f"line:<{line}> Unconsidered field header.")
+                continue
+        return parameter
+
     # remove physical tree
     contexts = physical_plan[physical_plan.find('\n(1)') + 1:].strip('\n')
     # remove Subqueries
@@ -103,56 +157,12 @@ def get_node_info(physical_plan):
     return nodes
 
 
-def parse_physical_plan(lines):
-    para = {}
-    for line in lines:
-        # line = str(len)
-        head = re.match(r"([A-Za-z]+( [A-Za-z]+)*) *(\[\d+])*:", line)
-        if head is None:
-            print_err_info(f"line:<{line}> Unable to extract field headers. ")
-            continue
-        head = head.group()
-        if line.startswith('Output'):
-            para[Attribute.OUTPUT.name] = processing_bracket_list(line.replace(head, ''))
-        elif line.startswith('Input'):
-            para[Attribute.INPUT.name] = processing_bracket_list(line.replace(head, ''))
-        elif line.startswith('Batched'):
-            para[Attribute.BATCHED.name] = line.replace(head, '').strip()
-        elif line.startswith('Arguments'):
-            # TODO[node structure]情况复杂，需要完善（当前策略就是不解析，后面和metrics做匹配也方便）
-            para[Attribute.ARGUMENTS.name] = line.replace(head, '').strip()
-        elif line.startswith('Result'):
-            para[Attribute.RESULT.name] = processing_bracket_list(line.replace(head, ''))
-        elif line.startswith('Aggregate Attributes'):
-            para[Attribute.AGGREGATE.name] = processing_bracket_list(line.replace(head, ''))
-        elif line.startswith('Functions'):
-            para[Attribute.FUNCTION.name] = processing_bracket_list(line.replace(head, ''))
-        elif line.startswith('Keys'):
-            para[Attribute.KEYS.name] = processing_bracket_list(line.replace(head, ''))
-        elif line.startswith('Join condition'):
-            para[Attribute.JOIN_CONDITION.name] = processing_bracket_list(line.replace(head, ''))
-        elif line.startswith('Left keys'):
-            para[Attribute.LEFT_KEYS.name] = processing_bracket_list(line.replace(head, ''))
-        elif line.startswith('Right keys'):
-            para[Attribute.RIGHT_KEYS.name] = processing_bracket_list(line.replace(head, ''))
-        elif line.startswith('Condition'):
-            # TODO[node structure]
-            para[Attribute.CONDITION.name] = processing_bracket_list(line.replace(head, ''))
-        elif line.startswith('ReadSchema'):
-            para[Attribute.READ_SCHEMA.name] = line.replace(head, '').strip()
-        elif line.startswith('PushedFilters'):
-            para[Attribute.PUSHED_FILTERS.name] = processing_bracket_list(line.replace(head, ''))
-        elif line.startswith('Location'):
-            para[Attribute.LOCATION.name] = line.replace(head, '').split(' ')[2].strip('[').strip(']')
-        elif line.startswith('PartitionFilters'):
-            para[Attribute.PARTITION_FILTERS.name] = processing_bracket_list(line.replace(head, ''))
-        else:
-            print_err_info(f"line:<{line}> Unconsidered field header.")
-            continue
-    return para
-
-
-def parse_node_metrics(node_metrics):
+def get_node_metrics(node_metrics):
+    """
+    解析node_metrics文件，树节点关系、子图关系、以及运行代价信息
+    :param node_metrics:
+    :return:
+    """
     start_size = len("[PlanMetric]\n")
     edge_tag = re.search(r"  \d->\d;", node_metrics)
     subgraph_tag = re.search(r"\[SubGraph]\n", node_metrics)
@@ -166,6 +176,11 @@ def parse_node_metrics(node_metrics):
 
 
 def parse_metrics_text(metrics):
+    """
+    解析代价信息
+    :param metrics:
+    :return:
+    """
     metric_nodes = {}
     for metric in metrics:
         lines = metric.split('\n')
@@ -175,6 +190,7 @@ def parse_metrics_text(metrics):
         nid = lines[0][start_id + len('id:'): start_name].strip()
         name = lines[0][start_name + len('name:'): start_desc].strip()
         desc = lines[0][start_desc + len('desc:'):].strip()
+        parse_metric_desc(desc)
         # TODO[后续处理时间信息]
         info = lines[1:]
         metric_nodes[nid] = MetricNode(nid, name, desc, info)
@@ -182,14 +198,27 @@ def parse_metrics_text(metrics):
 
 
 def parse_metric_desc(desc):
+    """
+    解析代价信息中的node tag，用来和结构信息对应
+    :param desc:
+    :return:
+    """
     para = {}
     if "FileScan" in desc:
         # 处理file scan的情况
         scan_tag = re.search(r"FileScan .+\[.*] ", desc)
         assert scan_tag is not None
-        para[Attribute.OUTPUT.name] = processing_bracket_list(scan_tag.group())
+        para[Attribute.OUTPUT.name] = processing_bracket_list(scan_tag.group().split('[')[1])
         desc = desc[scan_tag.span()[1]:]
-        re.search(r"\d+: .*( \d+:)?", desc)
+        front = re.search(r"\d+: ", desc)
+        while front is not None:
+            behind = re.search(r"\d+: ", desc[front.span()[1]:])
+            if behind is not None:
+                para[front.group().replace(":", "").strip()] = desc[front.span()[1]:behind.span()[0]]
+                front = behind
+            else:
+                para[front.group().replace(":", "").strip()] = desc[front.span()[1]:]
+                break
         print()
 
 
