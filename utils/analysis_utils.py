@@ -104,15 +104,6 @@ def get_node_info(physical_plan):
 
 
 def parse_physical_plan(lines):
-    def processing_bracket(string):
-        # 只处理带中括号的
-        if '[' not in string:
-            return string
-        stan = string.strip(' ').strip('[').strip(']')
-        if ',' in stan:
-            return stan.split(',')
-        return stan
-
     para = {}
     for line in lines:
         # line = str(len)
@@ -122,39 +113,39 @@ def parse_physical_plan(lines):
             continue
         head = head.group()
         if line.startswith('Output'):
-            para[Attribute.OUTPUT] = processing_bracket(line.replace(head, ''))
+            para[Attribute.OUTPUT.name] = processing_bracket_list(line.replace(head, ''))
         elif line.startswith('Input'):
-            para[Attribute.INPUT] = processing_bracket(line.replace(head, ''))
+            para[Attribute.INPUT.name] = processing_bracket_list(line.replace(head, ''))
         elif line.startswith('Batched'):
-            para[Attribute.BATCHED] = line.replace(head, '').strip()
+            para[Attribute.BATCHED.name] = line.replace(head, '').strip()
         elif line.startswith('Arguments'):
             # TODO[node structure]情况复杂，需要完善（当前策略就是不解析，后面和metrics做匹配也方便）
-            para[Attribute.ARGUMENTS] = line.replace(head, '').strip()
+            para[Attribute.ARGUMENTS.name] = line.replace(head, '').strip()
         elif line.startswith('Result'):
-            para[Attribute.RESULT] = processing_bracket(line.replace(head, ''))
+            para[Attribute.RESULT.name] = processing_bracket_list(line.replace(head, ''))
         elif line.startswith('Aggregate Attributes'):
-            para[Attribute.AGGREGATE] = processing_bracket(line.replace(head, ''))
+            para[Attribute.AGGREGATE.name] = processing_bracket_list(line.replace(head, ''))
         elif line.startswith('Functions'):
-            para[Attribute.FUNCTION] = processing_bracket(line.replace(head, ''))
+            para[Attribute.FUNCTION.name] = processing_bracket_list(line.replace(head, ''))
         elif line.startswith('Keys'):
-            para[Attribute.KEYS] = processing_bracket(line.replace(head, ''))
+            para[Attribute.KEYS.name] = processing_bracket_list(line.replace(head, ''))
         elif line.startswith('Join condition'):
-            para[Attribute.JOIN_CONDITION] = processing_bracket(line.replace(head, ''))
+            para[Attribute.JOIN_CONDITION.name] = processing_bracket_list(line.replace(head, ''))
         elif line.startswith('Left keys'):
-            para[Attribute.LEFT_KEYS] = processing_bracket(line.replace(head, ''))
+            para[Attribute.LEFT_KEYS.name] = processing_bracket_list(line.replace(head, ''))
         elif line.startswith('Right keys'):
-            para[Attribute.RIGHT_KEYS] = processing_bracket(line.replace(head, ''))
+            para[Attribute.RIGHT_KEYS.name] = processing_bracket_list(line.replace(head, ''))
         elif line.startswith('Condition'):
             # TODO[node structure]
-            para[Attribute.CONDITION] = processing_bracket(line.replace(head, ''))
+            para[Attribute.CONDITION.name] = processing_bracket_list(line.replace(head, ''))
         elif line.startswith('ReadSchema'):
-            para[Attribute.READ_SCHEMA] = line.replace(head, '').strip()
+            para[Attribute.READ_SCHEMA.name] = line.replace(head, '').strip()
         elif line.startswith('PushedFilters'):
-            para[Attribute.PUSHED_FILTERS] = processing_bracket(line.replace(head, ''))
+            para[Attribute.PUSHED_FILTERS.name] = processing_bracket_list(line.replace(head, ''))
         elif line.startswith('Location'):
-            para[Attribute.LOCATION] = line.replace(head, '').split(' ')[2].strip('[').strip(']')
+            para[Attribute.LOCATION.name] = line.replace(head, '').split(' ')[2].strip('[').strip(']')
         elif line.startswith('PartitionFilters'):
-            para[Attribute.PARTITION_FILTERS] = processing_bracket(line.replace(head, ''))
+            para[Attribute.PARTITION_FILTERS.name] = processing_bracket_list(line.replace(head, ''))
         else:
             print_err_info(f"line:<{line}> Unconsidered field header.")
             continue
@@ -194,9 +185,9 @@ def parse_metric_desc(desc):
     para = {}
     if "FileScan" in desc:
         # 处理file scan的情况
-        scan_tag = re.search(r"FileScan orc \d+\[.*] ", desc)
+        scan_tag = re.search(r"FileScan .+\[.*] ", desc)
         assert scan_tag is not None
-        para[Attribute.OUTPUT] = scan_tag.group().split('[')[1].strip('] ')
+        para[Attribute.OUTPUT.name] = processing_bracket_list(scan_tag.group())
         desc = desc[scan_tag.span()[1]:]
         re.search(r"\d+: .*( \d+:)?", desc)
         print()
@@ -210,7 +201,21 @@ def build_tree_with_edge_text(edge, metric_nodes):
         metric_nodes[relation[1]].children_node.append(relation[0])
         edge = edge[item.span()[1]:]
         item = re.search(r"\d+->\d+", edge)
-    print()
+
+
+def processing_bracket_list(string):
+    """
+    处理用中括号[]括起来的列表
+    :param string:
+    :return:
+    """
+    # 只处理带中括号的
+    if '[' not in string:
+        return string
+    stan = string.strip(' ').strip('[').strip(']')
+    if ',' in stan:
+        return stan.split(',')
+    return stan
 
 
 def print_err_info(info):
