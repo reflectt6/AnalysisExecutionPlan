@@ -204,10 +204,10 @@ def parse_metric_desc(name, desc):
     :param desc:
     :return:
     """
-    if "SubqueryBroadcast" in desc or \
-            "ReusedExchange" in desc or \
-            "ColumnarToRow" in desc or \
-            "WholeStageCodegen" in desc:
+    if "SubqueryBroadcast" == name or \
+            "ReusedExchange" == name or \
+            "ColumnarToRow" == name or \
+            "WholeStageCodegen" == name:
         return desc
     para = {}
     if "FileScan" in desc:
@@ -226,15 +226,15 @@ def parse_metric_desc(name, desc):
             else:
                 para[canonicalize(front.group())] = desc
                 break
-    elif "Filter" in name:
+    elif "Filter" == name:
         para[Attribute.CONDITION.value] = canonicalize(desc.replace(name, ""))
-    elif "Project" in name:
+    elif "Project" == name:
         para[Attribute.OUTPUT.value] = parse_bracket_list(desc.replace(name, ""))
-    elif "Exchange" in name:
+    elif "Exchange" == name:
         para[Attribute.ARGUMENTS.value] = canonicalize(desc.replace(name, ""))
-    elif "BroadcastExchange" in name:
+    elif "BroadcastExchange" == name:
         para[Attribute.ARGUMENTS.value] = canonicalize(desc.replace(name, ""))
-    elif "SortMergeJoin" in name or "BroadcastHashJoin" in name:
+    elif "SortMergeJoin" == name or "BroadcastHashJoin" == name:
         infos = canonicalize(desc.replace(name, ""))
         left_keys = re.search(r"\[.*], ", infos)
         assert left_keys is not None
@@ -252,7 +252,7 @@ def parse_metric_desc(name, desc):
         has_condition = re.search(r"(\(.*\)){1}", infos)
         if has_condition is not None:
             para[Attribute.JOIN_CONDITION.value] = has_condition.group()
-    elif "HashAggregate" in name or "TakeOrderedAndProject" in name:
+    elif "HashAggregate" == name or "TakeOrderedAndProject" == name:
         key_value = re.search(r"\w+=\[.*]", desc)
         while key_value is not None:
             key = get_attribute_enum(key_value.group().split('=')[0])
