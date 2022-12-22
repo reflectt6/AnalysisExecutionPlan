@@ -3,7 +3,7 @@ import subprocess
 import re
 import time
 
-from utils.physical_node import PhysicalPlanNode, MetricNode
+from utils.structure import PhysicalPlanNode, MetricNode, Attribute
 
 SECONDS_PER_MINUTE = 60
 
@@ -122,39 +122,39 @@ def parse_physical_plan(lines):
             continue
         head = head.group()
         if line.startswith('Output'):
-            para['Output'] = processing_bracket(line.replace(head, ''))
+            para[Attribute.OUTPUT] = processing_bracket(line.replace(head, ''))
         elif line.startswith('Input'):
-            para['Input'] = processing_bracket(line.replace(head, ''))
+            para[Attribute.INPUT] = processing_bracket(line.replace(head, ''))
         elif line.startswith('Batched'):
-            para['Batched'] = line.replace(head, '')
+            para[Attribute.BATCHED] = line.replace(head, '').strip()
         elif line.startswith('Arguments'):
-            # TODO[node structure]情况复杂，需要完善
-            para['Arguments'] = line.replace(head, '').split(', ')
+            # TODO[node structure]情况复杂，需要完善（当前策略就是不解析，后面和metrics做匹配也方便）
+            para[Attribute.ARGUMENTS] = line.replace(head, '').strip()
         elif line.startswith('Result'):
-            para['Result'] = processing_bracket(line.replace(head, ''))
+            para[Attribute.RESULT] = processing_bracket(line.replace(head, ''))
         elif line.startswith('Aggregate Attributes'):
-            para['Aggregate Attributes'] = processing_bracket(line.replace(head, ''))
+            para[Attribute.AGGREGATE] = processing_bracket(line.replace(head, ''))
         elif line.startswith('Functions'):
-            para['Functions'] = processing_bracket(line.replace(head, ''))
+            para[Attribute.FUNCTION] = processing_bracket(line.replace(head, ''))
         elif line.startswith('Keys'):
-            para['Keys'] = processing_bracket(line.replace(head, ''))
-        elif line.startswith('Join condition:'):
-            para['Keys'] = processing_bracket(line.replace(head, ''))
+            para[Attribute.KEYS] = processing_bracket(line.replace(head, ''))
+        elif line.startswith('Join condition'):
+            para[Attribute.JOIN_CONDITION] = processing_bracket(line.replace(head, ''))
         elif line.startswith('Left keys'):
-            para['Left keys'] = processing_bracket(line.replace(head, ''))
+            para[Attribute.LEFT_KEYS] = processing_bracket(line.replace(head, ''))
         elif line.startswith('Right keys'):
-            para['Right keys'] = processing_bracket(line.replace(head, ''))
+            para[Attribute.RIGHT_KEYS] = processing_bracket(line.replace(head, ''))
         elif line.startswith('Condition'):
             # TODO[node structure]
-            para['Condition'] = processing_bracket(line.replace(head, ''))
+            para[Attribute.CONDITION] = processing_bracket(line.replace(head, ''))
         elif line.startswith('ReadSchema'):
-            para['ReadSchema'] = line.replace(head, '')
+            para[Attribute.READ_SCHEMA] = line.replace(head, '').strip()
         elif line.startswith('PushedFilters'):
-            para['PushedFilters'] = processing_bracket(line.replace(head, ''))
+            para[Attribute.PUSHED_FILTERS] = processing_bracket(line.replace(head, ''))
         elif line.startswith('Location'):
-            para['Location'] = line.replace(head, '').split(' ')[2].strip('[').strip(']')
+            para[Attribute.LOCATION] = line.replace(head, '').split(' ')[2].strip('[').strip(']')
         elif line.startswith('PartitionFilters'):
-            para['PartitionFilters'] = processing_bracket(line.replace(head, ''))
+            para[Attribute.PARTITION_FILTERS] = processing_bracket(line.replace(head, ''))
         else:
             print_err_info(f"line:<{line}> Unconsidered field header.")
             continue
@@ -188,6 +188,18 @@ def parse_metrics_text(metrics):
         info = lines[1:]
         metric_nodes[nid] = MetricNode(nid, name, desc, info)
     return metric_nodes
+
+
+def parse_metric_desc(desc):
+    para = {}
+    if "FileScan" in desc:
+        # 处理file scan的情况
+        scan_tag = re.search(r"FileScan orc \d+\[.*] ", desc)
+        assert scan_tag is not None
+        para[Attribute.OUTPUT] = scan_tag.group().split('[')[1].strip('] ')
+        desc = desc[scan_tag.span()[1]:]
+        re.search(r"\d+: .*( \d+:)?", desc)
+        print()
 
 
 def build_tree_with_edge_text(edge, metric_nodes):
