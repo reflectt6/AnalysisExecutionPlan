@@ -98,39 +98,39 @@ def get_node_structure(physical_plan):
                 continue
             head = head.group()
             if line.startswith('Output'):
-                parameter[Attribute.OUTPUT.name] = processing_bracket_list(line.replace(head, ''))
+                parameter[Attribute.OUTPUT.value] = processing_bracket_list(line.replace(head, ''))
             elif line.startswith('Input'):
-                parameter[Attribute.INPUT.name] = processing_bracket_list(line.replace(head, ''))
+                parameter[Attribute.INPUT.value] = processing_bracket_list(line.replace(head, ''))
             elif line.startswith('Batched'):
-                parameter[Attribute.BATCHED.name] = line.replace(head, '').strip()
+                parameter[Attribute.BATCHED.value] = line.replace(head, '').strip()
             elif line.startswith('Arguments'):
                 # TODO[node structure]情况复杂，需要完善（当前策略就是不解析，后面和metrics做匹配也方便）
-                parameter[Attribute.ARGUMENTS.name] = line.replace(head, '').strip()
+                parameter[Attribute.ARGUMENTS.value] = line.replace(head, '').strip()
             elif line.startswith('Result'):
-                parameter[Attribute.RESULT.name] = processing_bracket_list(line.replace(head, ''))
+                parameter[Attribute.RESULT.value] = processing_bracket_list(line.replace(head, ''))
             elif line.startswith('Aggregate Attributes'):
-                parameter[Attribute.AGGREGATE.name] = processing_bracket_list(line.replace(head, ''))
+                parameter[Attribute.AGGREGATE.value] = processing_bracket_list(line.replace(head, ''))
             elif line.startswith('Functions'):
-                parameter[Attribute.FUNCTION.name] = processing_bracket_list(line.replace(head, ''))
+                parameter[Attribute.FUNCTION.value] = processing_bracket_list(line.replace(head, ''))
             elif line.startswith('Keys'):
-                parameter[Attribute.KEYS.name] = processing_bracket_list(line.replace(head, ''))
+                parameter[Attribute.KEYS.value] = processing_bracket_list(line.replace(head, ''))
             elif line.startswith('Join condition'):
-                parameter[Attribute.JOIN_CONDITION.name] = processing_bracket_list(line.replace(head, ''))
+                parameter[Attribute.JOIN_CONDITION.value] = processing_bracket_list(line.replace(head, ''))
             elif line.startswith('Left keys'):
-                parameter[Attribute.LEFT_KEYS.name] = processing_bracket_list(line.replace(head, ''))
+                parameter[Attribute.LEFT_KEYS.value] = processing_bracket_list(line.replace(head, ''))
             elif line.startswith('Right keys'):
-                parameter[Attribute.RIGHT_KEYS.name] = processing_bracket_list(line.replace(head, ''))
+                parameter[Attribute.RIGHT_KEYS.value] = processing_bracket_list(line.replace(head, ''))
             elif line.startswith('Condition'):
                 # TODO[node structure]
-                parameter[Attribute.CONDITION.name] = processing_bracket_list(line.replace(head, ''))
+                parameter[Attribute.CONDITION.value] = processing_bracket_list(line.replace(head, ''))
             elif line.startswith('ReadSchema'):
-                parameter[Attribute.READ_SCHEMA.name] = line.replace(head, '').strip()
+                parameter[Attribute.READ_SCHEMA.value] = line.replace(head, '').strip()
             elif line.startswith('PushedFilters'):
-                parameter[Attribute.PUSHED_FILTERS.name] = processing_bracket_list(line.replace(head, ''))
+                parameter[Attribute.PUSHED_FILTERS.value] = processing_bracket_list(line.replace(head, ''))
             elif line.startswith('Location'):
-                parameter[Attribute.LOCATION.name] = line.replace(head, '').split(' ')[2].strip('[').strip(']')
+                parameter[Attribute.LOCATION.value] = line.replace(head, '').split(' ')[2].strip('[').strip(']')
             elif line.startswith('PartitionFilters'):
-                parameter[Attribute.PARTITION_FILTERS.name] = processing_bracket_list(line.replace(head, ''))
+                parameter[Attribute.PARTITION_FILTERS.value] = processing_bracket_list(line.replace(head, ''))
             else:
                 print_err_info(f"line:<{line}> Unconsidered field header.")
                 continue
@@ -208,16 +208,17 @@ def parse_metric_desc(desc):
         # 处理file scan的情况
         scan_tag = re.search(r"FileScan .+\[.*] ", desc)
         assert scan_tag is not None
-        para[Attribute.OUTPUT.name] = processing_bracket_list(scan_tag.group().split('[')[1])
+        para[Attribute.OUTPUT.value] = processing_bracket_list('[' + scan_tag.group().split('[')[1])
         desc = desc[scan_tag.span()[1]:]
         front = re.search(r"\d+: ", desc)
         while front is not None:
-            behind = re.search(r"\d+: ", desc[front.span()[1]:])
+            desc = desc[front.span()[1]:]
+            behind = re.search(r"\d+: ", desc)
             if behind is not None:
-                para[front.group().replace(":", "").strip()] = desc[front.span()[1]:behind.span()[0]]
+                para[front.group().replace(":", "").strip()] = desc[:behind.span()[0]]
                 front = behind
             else:
-                para[front.group().replace(":", "").strip()] = desc[front.span()[1]:]
+                para[front.group().replace(":", "").strip()] = desc
                 break
         print()
 
