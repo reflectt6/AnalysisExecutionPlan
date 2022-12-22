@@ -258,5 +258,8 @@ def canonicalize(item):
     规范化字符串
     :return:
     """
-    return item.strip.strip('..., ').strip('...,').strip(' :').strip(': ') \
-        .strip(', ').strip(' ,').strip(' ').strip(',').strip(':')
+    if isinstance(item, str):
+        return item.strip('..., ').strip('...,').strip(' :').strip(': ') \
+            .strip(', ').strip(' ,').strip(' ').strip(',').strip(':')
+    else:
+        return item
