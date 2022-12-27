@@ -128,7 +128,9 @@ def get_node_structure(physical_plan):
             elif line.startswith('PushedFilters'):
                 parameter[Attribute.PUSHED_FILTERS.value] = parse_bracket_list(line.replace(head, ''))
             elif line.startswith('Location'):
-                parameter[Attribute.LOCATION.value] = line.replace(head, '').split(' ')[2].strip('[').strip(']')
+                # parameter[Attribute.LOCATION.value] = line.replace(head, '').split(' ')[2].strip('[').strip(']')
+                # tmp = line.replace(head, '').split(' ')
+                parameter[Attribute.LOCATION.value] = line.replace(head, '').replace(' ', '')
             elif line.startswith('PartitionFilters'):
                 parameter[Attribute.PARTITION_FILTERS.value] = parse_bracket_list(line.replace(head, ''))
             else:
@@ -300,9 +302,9 @@ def parse_bracket_list(string):
     stan = string.strip(' ').strip('[').strip(']')
     if ',' in stan:
         stan = stan.split(',')
-        stan.sort()
         for i in range(len(stan)):
             stan[i] = canonicalize(stan[i])
+        stan.sort()
     return stan
 
 
