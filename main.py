@@ -15,24 +15,33 @@ if __name__ == '__main__':
 
         for node in nodes:
             toDels = []
+            find = False
             candidates_node = MetricNode.node_cache.get(node.name)
             if candidates_node is None:
                 continue
             for candidate_node in candidates_node:
+                if find:
+                    break
                 match = True
                 addition = {}
                 for key in node.para.keys():
                     if candidate_node.desc.__contains__(key):
                         # TODO 判断相等
-                        if candidate_node.desc.get(key) != node.para.get(key):
+                        one = candidate_node.desc.get(key)
+                        other = node.para.get(key)
+                        if ((isinstance(one, str) and isinstance(other, str) and re.match(one, other) is not None)
+                                or (isinstance(one, list) and isinstance(one, list) and one == other)):
+                            one = other
+                        else:
                             match = False
                             break
                     else:
-                        addition = node.para.get(key)
+                        addition[key] = other
                 if match:
                     candidate_node.desc += addition
                     toDels.append(candidate_node)
-                print()
+                    find = True
+                    print("matched: " + one + "|||||||||" + other)
             for toDel in toDels:
-                del MetricNode.node_cache[toDel]
+                # del MetricNode.node_cache[toDel]
         print()

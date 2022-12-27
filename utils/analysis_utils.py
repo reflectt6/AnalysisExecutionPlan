@@ -236,7 +236,7 @@ def parse_metric_desc(name, desc):
                 para[canonicalize(front.group())] = canonicalize(desc[:behind.span()[0]])
                 front = behind
             else:
-                para[canonicalize(front.group())] = desc
+                para[canonicalize(front.group())] = canonicalize(desc)
                 break
     elif "Filter" == name:
         para[Attribute.CONDITION.value] = canonicalize(desc.replace(name, ""))
@@ -299,7 +299,7 @@ def parse_bracket_list(string):
         return string
     stan = string.strip(' ').strip('[').strip(']')
     if ',' in stan:
-        return stan.split(',')
+        return stan.split(',').sort()
     return stan
 
 
