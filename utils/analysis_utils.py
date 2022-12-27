@@ -102,10 +102,10 @@ def get_node_structure(physical_plan):
             elif line.startswith('Input'):
                 parameter[Attribute.INPUT.value] = parse_bracket_list(line.replace(head, ''))
             elif line.startswith('Batched'):
-                parameter[Attribute.BATCHED.value] = line.replace(head, '').strip()
+                parameter[Attribute.BATCHED.value] = canonicalize(line.replace(head, ''))
             elif line.startswith('Arguments'):
                 # TODO[node structure]情况复杂，需要完善（当前策略就是不解析，后面和metrics做匹配也方便）
-                parameter[Attribute.ARGUMENTS.value] = line.replace(head, '').strip()
+                parameter[Attribute.ARGUMENTS.value] = canonicalize(line.replace(head, ''))
             elif line.startswith('Result'):
                 parameter[Attribute.RESULT.value] = parse_bracket_list(line.replace(head, ''))
             elif line.startswith('Aggregate Attributes'):
@@ -124,7 +124,7 @@ def get_node_structure(physical_plan):
                 # TODO[node structure]
                 parameter[Attribute.CONDITION.value] = parse_bracket_list(line.replace(head, ''))
             elif line.startswith('ReadSchema'):
-                parameter[Attribute.READ_SCHEMA.value] = line.replace(head, '').strip()
+                parameter[Attribute.READ_SCHEMA.value] = canonicalize(line.replace(head, ''))
             elif line.startswith('PushedFilters'):
                 parameter[Attribute.PUSHED_FILTERS.value] = parse_bracket_list(line.replace(head, ''))
             elif line.startswith('Location'):
@@ -299,7 +299,8 @@ def parse_bracket_list(string):
         return string
     stan = string.strip(' ').strip('[').strip(']')
     if ',' in stan:
-        return stan.split(',').sort()
+        stan = stan.split(',')
+        stan.sort()
     return stan
 
 

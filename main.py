@@ -30,7 +30,7 @@ if __name__ == '__main__':
                         one = candidate_node.desc.get(key)
                         other = node.para.get(key)
                         if not ((isinstance(one, str) and isinstance(other, str) and one in other)
-                                or (isinstance(one, list) and isinstance(one, list) and one == other)):
+                                or (isinstance(one, list) and isinstance(other, list) and one == other)):
                             match = False
                             break
                     # else:
@@ -39,7 +39,7 @@ if __name__ == '__main__':
                     candidate_node.desc = {**node.para, **candidate_node.desc}
                     toDels.append(candidate_node)
                     find = True
-                    print("matched: " + one + "|||||||||" + other)
+                    print("matched: " + str(one) + "|||||||||" + str(other))
             # for toDel in toDels:
         # del MetricNode.node_cache[toDel]
         print()
