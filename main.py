@@ -24,19 +24,18 @@ if __name__ == '__main__':
                     break
                 match = True
                 # addition = {}
-                for key in node.para.keys():
-                    if candidate_node.desc.__contains__(key):
+                for key in node.para_tag.keys():
+                    if candidate_node.desc_tag.__contains__(key):
                         # TODO 判断相等
-                        one = candidate_node.desc.get(key)
-                        other = node.para.get(key)
-                        if not ((isinstance(one, str) and isinstance(other, str) and one in other)
-                                or (isinstance(one, list) and isinstance(other, list) and one == other)):
+                        one = candidate_node.desc_tag.get(key)
+                        other = node.para_tag.get(key)
+                        if not (isinstance(one, str) and isinstance(other, str) and one in other):
                             match = False
                             break
                     # else:
                     #     addition[key] = other
                 if match:
-                    candidate_node.desc = {**node.para, **candidate_node.desc}
+                    candidate_node.desc = {**node.para_tag, **candidate_node.desc_tag}
                     toDels.append(candidate_node)
                     find = True
                     print("matched: " + str(one) + "|||||||||" + str(other))

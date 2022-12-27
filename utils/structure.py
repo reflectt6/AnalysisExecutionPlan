@@ -2,18 +2,20 @@ from enum import Enum
 
 
 class PhysicalPlanNode(object):
-    def __init__(self, name, para):
+    def __init__(self, name, para, para_tag):
         self.name = name
         self.para = para
+        self.para_tag = para_tag
 
 
 class MetricNode(object):
     node_cache = {}
 
-    def __init__(self, nid, name, desc, time_info):
+    def __init__(self, nid, name, desc, time_info, desc_tag):
         self.nid = nid
         self.name = name
         self.desc = desc
+        self.desc_tag = desc_tag
         self.time_info = time_info
         self.children_node = []
         self.parents_node = []
