@@ -301,6 +301,8 @@ def parse_bracket_list(string):
     if ',' in stan:
         stan = stan.split(',')
         stan.sort()
+        for i in range(len(stan)):
+            stan[i] = canonicalize(stan[i])
     return stan
 
 
