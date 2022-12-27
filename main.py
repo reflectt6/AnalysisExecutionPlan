@@ -23,25 +23,23 @@ if __name__ == '__main__':
                 if find:
                     break
                 match = True
-                addition = {}
+                # addition = {}
                 for key in node.para.keys():
                     if candidate_node.desc.__contains__(key):
                         # TODO 判断相等
                         one = candidate_node.desc.get(key)
                         other = node.para.get(key)
-                        if ((isinstance(one, str) and isinstance(other, str) and re.match(one, other) is not None)
+                        if not ((isinstance(one, str) and isinstance(other, str) and one in other)
                                 or (isinstance(one, list) and isinstance(one, list) and one == other)):
-                            one = other
-                        else:
                             match = False
                             break
-                    else:
-                        addition[key] = other
+                    # else:
+                    #     addition[key] = other
                 if match:
-                    candidate_node.desc += addition
+                    candidate_node.desc = {**node.para, **candidate_node.desc}
                     toDels.append(candidate_node)
                     find = True
                     print("matched: " + one + "|||||||||" + other)
-            for toDel in toDels:
-                # del MetricNode.node_cache[toDel]
+            # for toDel in toDels:
+        # del MetricNode.node_cache[toDel]
         print()
