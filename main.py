@@ -12,12 +12,27 @@ if __name__ == '__main__':
         _, metrics_text, physical_plan, _, _ = get_history_json(history_json_path)
         nodes = get_node_structure(physical_plan)
         metrics_nodes = get_node_metrics(metrics_text)
-        for metrics_node in metrics_nodes:
-            colls = MetricNode.node_cache.get(metrics_node.name)
-            if colls is None:
-                continue
-            for col in colls:
-                # TODO
-                print()
 
+        for node in nodes:
+            toDels = []
+            candidates_node = MetricNode.node_cache.get(node.name)
+            if candidates_node is None:
+                continue
+            for candidate_node in candidates_node:
+                match = True
+                addition = {}
+                for key in node.para.keys():
+                    if candidate_node.desc.__contains__(key):
+                        # TODO 判断相等
+                        if candidate_node.desc.get(key) != node.para.get(key):
+                            match = False
+                            break
+                    else:
+                        addition = node.para.get(key)
+                if match:
+                    candidate_node.desc += addition
+                    toDels.append(candidate_node)
+                print()
+            for toDel in toDels:
+                del MetricNode.node_cache[toDel]
         print()

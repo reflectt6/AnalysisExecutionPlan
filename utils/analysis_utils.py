@@ -197,11 +197,14 @@ def parse_metrics_text(metrics):
         info = lines[1:]
         ins_node = MetricNode(nid, name, desc, info)
         metric_nodes[nid] = ins_node
+        if "WholeStageCodegen" in name or "Sort" == name or \
+                "SubqueryBroadcast" == name or "ReusedExchange" == name:
+            continue
         # cache
         if MetricNode.node_cache.get(name) is None:
             MetricNode.node_cache[name] = [ins_node]
         else:
-            MetricNode.node_cache.get(name).append[ins_node]
+            MetricNode.node_cache.get(name).append(ins_node)
     return metric_nodes
 
 
