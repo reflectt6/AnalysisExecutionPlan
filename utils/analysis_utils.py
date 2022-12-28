@@ -100,56 +100,56 @@ def get_node_structure(physical_plan):
             head = head.group()
             if line.startswith('Output'):
                 parameter[Attribute.OUTPUT.value] = parse_bracket_list(line.replace(head, ''))
-                parameter_tag[Attribute.OUTPUT.value] = canonicalize(line.replace(head, ''))
+                parameter_tag[Attribute.OUTPUT.value] = canonicalize(line.replace(head, '')).replace(' ', '')
             elif line.startswith('Input'):
                 parameter[Attribute.INPUT.value] = parse_bracket_list(line.replace(head, ''))
-                parameter_tag[Attribute.INPUT.value] = canonicalize(line.replace(head, ''))
+                parameter_tag[Attribute.INPUT.value] = canonicalize(line.replace(head, '')).replace(' ', '')
             elif line.startswith('Batched'):
                 parameter[Attribute.BATCHED.value] = canonicalize(line.replace(head, ''))
-                parameter_tag[Attribute.BATCHED.value] = canonicalize(line.replace(head, ''))
+                parameter_tag[Attribute.BATCHED.value] = canonicalize(line.replace(head, '')).replace(' ', '')
             elif line.startswith('Arguments'):
                 # TODO[node structure]情况复杂，需要完善（当前策略就是不解析，后面和metrics做匹配也方便）
                 parameter[Attribute.ARGUMENTS.value] = canonicalize(line.replace(head, ''))
-                parameter_tag[Attribute.ARGUMENTS.value] = canonicalize(line.replace(head, ''))
+                parameter_tag[Attribute.ARGUMENTS.value] = canonicalize(line.replace(head, '')).replace(' ', '')
             elif line.startswith('Result'):
                 parameter[Attribute.RESULT.value] = parse_bracket_list(line.replace(head, ''))
-                parameter_tag[Attribute.RESULT.value] = canonicalize(line.replace(head, ''))
+                parameter_tag[Attribute.RESULT.value] = canonicalize(line.replace(head, '')).replace(' ', '')
             elif line.startswith('Aggregate Attributes'):
                 parameter[Attribute.AGGREGATE.value] = parse_bracket_list(line.replace(head, ''))
-                parameter_tag[Attribute.AGGREGATE.value] = canonicalize(line.replace(head, ''))
+                parameter_tag[Attribute.AGGREGATE.value] = canonicalize(line.replace(head, '')).replace(' ', '')
             elif line.startswith('Functions'):
                 parameter[Attribute.FUNCTION.value] = parse_bracket_list(line.replace(head, ''))
-                parameter_tag[Attribute.FUNCTION.value] = canonicalize(line.replace(head, ''))
+                parameter_tag[Attribute.FUNCTION.value] = canonicalize(line.replace(head, '')).replace(' ', '')
             elif line.startswith('Keys'):
                 parameter[Attribute.KEYS.value] = parse_bracket_list(line.replace(head, ''))
-                parameter_tag[Attribute.KEYS.value] = canonicalize(line.replace(head, ''))
+                parameter_tag[Attribute.KEYS.value] = canonicalize(line.replace(head, '')).replace(' ', '')
             elif line.startswith('Join condition'):
                 parameter[Attribute.JOIN_CONDITION.value] = parse_bracket_list(line.replace(head, ''))
-                parameter_tag[Attribute.JOIN_CONDITION.value] = canonicalize(line.replace(head, ''))
+                parameter_tag[Attribute.JOIN_CONDITION.value] = canonicalize(line.replace(head, '')).replace(' ', '')
             elif line.startswith('Left keys'):
                 parameter[Attribute.LEFT_KEYS.value] = parse_bracket_list(line.replace(head, ''))
-                parameter_tag[Attribute.LEFT_KEYS.value] = canonicalize(line.replace(head, ''))
+                parameter_tag[Attribute.LEFT_KEYS.value] = canonicalize(line.replace(head, '')).replace(' ', '')
             elif line.startswith('Right keys'):
                 parameter[Attribute.RIGHT_KEYS.value] = parse_bracket_list(line.replace(head, ''))
-                parameter_tag[Attribute.RIGHT_KEYS.value] = canonicalize(line.replace(head, ''))
+                parameter_tag[Attribute.RIGHT_KEYS.value] = canonicalize(line.replace(head, '')).replace(' ', '')
             elif line.startswith('Condition'):
                 # TODO[node structure]
                 parameter[Attribute.CONDITION.value] = parse_bracket_list(line.replace(head, ''))
-                parameter_tag[Attribute.CONDITION.value] = canonicalize(line.replace(head, ''))
+                parameter_tag[Attribute.CONDITION.value] = canonicalize(line.replace(head, '')).replace(' ', '')
             elif line.startswith('ReadSchema'):
                 parameter[Attribute.READ_SCHEMA.value] = canonicalize(line.replace(head, ''))
-                parameter_tag[Attribute.READ_SCHEMA.value] = canonicalize(line.replace(head, ''))
+                parameter_tag[Attribute.READ_SCHEMA.value] = canonicalize(line.replace(head, '')).replace(' ', '')
             elif line.startswith('PushedFilters'):
                 parameter[Attribute.PUSHED_FILTERS.value] = parse_bracket_list(line.replace(head, ''))
-                parameter_tag[Attribute.PUSHED_FILTERS.value] = canonicalize(line.replace(head, ''))
+                parameter_tag[Attribute.PUSHED_FILTERS.value] = canonicalize(line.replace(head, '')).replace(' ', '')
             elif line.startswith('Location'):
                 # parameter[Attribute.LOCATION.value] = line.replace(head, '').split(' ')[2].strip('[').strip(']')
                 # tmp = line.replace(head, '').split(' ')
                 parameter[Attribute.LOCATION.value] = line.replace(head, '').replace(' ', '')
-                parameter_tag[Attribute.LOCATION.value] = line.replace(head, '').replace(' ', '')
+                parameter_tag[Attribute.LOCATION.value] = line.replace(head, '').replace(' ', '').replace(' ', '')
             elif line.startswith('PartitionFilters'):
                 parameter[Attribute.PARTITION_FILTERS.value] = parse_bracket_list(line.replace(head, ''))
-                parameter_tag[Attribute.PARTITION_FILTERS.value] = canonicalize(line.replace(head, ''))
+                parameter_tag[Attribute.PARTITION_FILTERS.value] = canonicalize(line.replace(head, '')).replace(' ', '')
             else:
                 print_err_info(f"line:<{line}> Unconsidered field header.")
                 continue
@@ -244,7 +244,7 @@ def parse_metric_desc(name, desc):
             "ColumnarToRow" == name or \
             "WholeStageCodegen" in name or \
             "Sort" == name:
-        return desc
+        return desc, desc
     para = {}
     para_tag = {}
     if "FileScan" in desc:
