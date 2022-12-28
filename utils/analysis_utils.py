@@ -316,6 +316,40 @@ def parse_metric_desc(name, desc):
     return para, para_tag
 
 
+def complete_information(nodes):
+    """
+    根据physical plan中的信息补全metrics节点
+    :param nodes:
+    :return:
+    """
+    num = 0
+    for node in nodes:
+        num += 1
+        toDels = []
+        find = False
+        candidates_node = MetricNode.node_cache.get(node.name)
+        if candidates_node is None:
+            continue
+        for candidate_node in candidates_node:
+            if find:
+                break
+            match = True
+            for key in node.para_tag.keys():
+                if candidate_node.desc_tag.__contains__(key):
+                    one = candidate_node.desc_tag.get(key)
+                    other = node.para_tag.get(key)
+                    if not (isinstance(one, str) and isinstance(other, str) and one in other):
+                        match = False
+                        break
+            if match:
+                candidate_node.desc = {**candidate_node.desc, **node.para}
+                toDels.append(candidate_node)
+                find = True
+                print("[" + str(num) + "]matched: " + node.name)
+            else:
+                print("[" + str(num) + "]Not matched: " + node.name)
+
+
 def build_tree_with_edge_text(edge, metric_nodes):
     item = re.search(r"\d+->\d+", edge)
     while item is not None:

@@ -12,33 +12,5 @@ if __name__ == '__main__':
         _, metrics_text, physical_plan, _, _ = get_history_json(history_json_path)
         nodes = get_node_structure(physical_plan)
         metrics_nodes = get_node_metrics(metrics_text)
-
-        for node in nodes:
-            toDels = []
-            find = False
-            candidates_node = MetricNode.node_cache.get(node.name)
-            if candidates_node is None:
-                continue
-            for candidate_node in candidates_node:
-                if find:
-                    break
-                match = True
-                # addition = {}
-                for key in node.para_tag.keys():
-                    if candidate_node.desc_tag.__contains__(key):
-                        # TODO 判断相等
-                        one = candidate_node.desc_tag.get(key)
-                        other = node.para_tag.get(key)
-                        if not (isinstance(one, str) and isinstance(other, str) and one in other):
-                            match = False
-                            break
-                    # else:
-                    #     addition[key] = other
-                if match:
-                    candidate_node.desc = {**node.para_tag, **candidate_node.desc_tag}
-                    toDels.append(candidate_node)
-                    find = True
-                    print("matched: " + str(one) + "|||||||||" + str(other))
-            # for toDel in toDels:
-        # del MetricNode.node_cache[toDel]
+        complete_information(nodes)
         print()
