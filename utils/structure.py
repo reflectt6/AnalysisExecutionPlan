@@ -39,3 +39,5 @@ class Attribute(Enum):
     LOCATION = 'Location'
     PARTITION_FILTERS = 'PartitionFilters'
     JOIN_TYPE = 'Join Type'
+    ORDER_BY = 'orderby'
+    LIMIT = 'limit'

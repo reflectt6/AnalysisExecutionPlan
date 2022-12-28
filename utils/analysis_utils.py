@@ -172,7 +172,7 @@ def get_node_structure(physical_plan):
         name = lines[0][start:end]
         # get parameter
         para, para_tag = parse_physical_plan(lines[1:])
-        nodes.append(PhysicalPlanNode(name, para))
+        nodes.append(PhysicalPlanNode(name, para, para_tag))
     return nodes
 
 
@@ -211,8 +211,7 @@ def parse_metrics_text(metrics):
         nid = lines[0][start_id + len('id:'): start_name].strip()
         name = lines[0][start_name + len('name:'): start_desc].strip()
         desc = lines[0][start_desc + len('desc:'):].strip()
-        desc = parse_metric_desc(name, desc)
-        desc_tag = desc.copy()
+        desc, desc_tag = parse_metric_desc(name, desc)
         if isinstance(desc_tag, str):
             desc_tag = desc_tag.replace(' ', '')
         else:
@@ -247,11 +246,13 @@ def parse_metric_desc(name, desc):
             "Sort" == name:
         return desc
     para = {}
+    para_tag = {}
     if "FileScan" in desc:
         # 处理file scan的情况
         scan_tag = re.search(r"FileScan .+\[.*?] ", desc)
         assert scan_tag is not None
         para[Attribute.OUTPUT.value] = parse_bracket_list('[' + scan_tag.group().split('[')[1])
+        para_tag[Attribute.OUTPUT.value] = canonicalize('[' + scan_tag.group().split('[')[1])
         desc = desc[scan_tag.span()[1]:]
         front = re.search(r"\w+: ", desc)
         while front is not None:
@@ -259,36 +260,47 @@ def parse_metric_desc(name, desc):
             behind = re.search(r"\w+: ", desc)
             if behind is not None:
                 para[canonicalize(front.group())] = canonicalize(desc[:behind.span()[0]])
+                para_tag[canonicalize(front.group())] = canonicalize(desc[:behind.span()[0]])
                 front = behind
             else:
                 para[canonicalize(front.group())] = canonicalize(desc)
+                para_tag[canonicalize(front.group())] = canonicalize(desc)
                 break
     elif "Filter" == name:
         para[Attribute.CONDITION.value] = canonicalize(desc.replace(name, ""))
+        para_tag[Attribute.CONDITION.value] = canonicalize(desc.replace(name, ""))
     elif "Project" == name:
         para[Attribute.OUTPUT.value] = parse_bracket_list(desc.replace(name, ""))
+        para_tag[Attribute.OUTPUT.value] = canonicalize(desc.replace(name, ""))
     elif "Exchange" == name:
         para[Attribute.ARGUMENTS.value] = canonicalize(desc.replace(name, ""))
+        para_tag[Attribute.ARGUMENTS.value] = canonicalize(desc.replace(name, ""))
     elif "BroadcastExchange" == name:
         para[Attribute.ARGUMENTS.value] = canonicalize(desc.replace(name, ""))
+        para_tag[Attribute.ARGUMENTS.value] = canonicalize(desc.replace(name, ""))
     elif "SortMergeJoin" == name or "BroadcastHashJoin" == name:
         infos = canonicalize(desc.replace(name, ""))
         left_keys = re.search(r"\[.*?], ", infos)
         assert left_keys is not None
         para[Attribute.LEFT_KEYS.value] = parse_bracket_list(canonicalize(left_keys.group()))
+        para_tag[Attribute.LEFT_KEYS.value] = canonicalize(canonicalize(left_keys.group()))
         infos = infos[left_keys.span()[1]:]
         right_keys = re.search(r"\[.*?], ", infos)
         assert right_keys is not None
         para[Attribute.RIGHT_KEYS.value] = parse_bracket_list(canonicalize(right_keys.group()))
+        para_tag[Attribute.RIGHT_KEYS.value] = canonicalize(canonicalize(right_keys.group()))
         infos = infos[right_keys.span()[1]:]
         has_next = re.search(r", ", infos)
         if has_next is not None:
             para[Attribute.JOIN_TYPE.value] = canonicalize(infos[:has_next.span()[0]])
+            para_tag[Attribute.JOIN_TYPE.value] = canonicalize(infos[:has_next.span()[0]])
         else:
             para[Attribute.JOIN_TYPE.value] = canonicalize(infos)
+            para_tag[Attribute.JOIN_TYPE.value] = canonicalize(infos)
         has_condition = re.search(r"(\(.*\)){1}", infos)
         if has_condition is not None:
             para[Attribute.JOIN_CONDITION.value] = has_condition.group()
+            para_tag[Attribute.JOIN_CONDITION.value] = has_condition.group()
     elif "HashAggregate" == name or "TakeOrderedAndProject" == name:
         key_value = re.search(r"\w+=\[.*?]", desc)
         while key_value is not None:
@@ -296,11 +308,12 @@ def parse_metric_desc(name, desc):
             if key is not None:
                 value = parse_bracket_list(key_value.group().split('=')[1])
                 para[key.value] = value
+                para_tag[key.value] = canonicalize(key_value.group().split('=')[1])
             desc = desc[key_value.span()[1]:]
             key_value = re.search(r"\w+=\[.*?]", desc)
     else:
         print_err_info(f"[metrics error] {name} is not considered.")
-    return para
+    return para, para_tag
 
 
 def build_tree_with_edge_text(edge, metric_nodes):
