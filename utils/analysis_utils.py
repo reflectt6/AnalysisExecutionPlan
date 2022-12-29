@@ -515,10 +515,25 @@ def generate_sql(node):
         sql = canonicalize(sql) + ' '
 
         # From
-        sql += f'(' + node.contribute_sql[SQLContribute.SUBQUERY.value][0] + f') as {left_table} {join_type} (' + \
-               node.contribute_sql[SQLContribute.SUBQUERY.value][1] + f') as {right_table} '
+        # sql += f'(' + node.contribute_sql[SQLContribute.SUBQUERY.value][0] + f') as {left_table} {join_type} (' + \
+        #        node.contribute_sql[SQLContribute.SUBQUERY.value][1] + f') as {right_table} '
+        sql += f'(' + node.contribute_sql[SQLContribute.SUBQUERY.value][0] + f') {join_type} (' + \
+               node.contribute_sql[SQLContribute.SUBQUERY.value][1] + f') '
 
         return general(node, sql)
+
+
+def get_candidate_views(root):
+    def get_candidate_view(root, candidate_views):
+        if len(root.children_node) > 0:
+            for child in root.children_node:
+                get_candidate_view(MetricNode.node_cache.get(child), candidate_views)
+        if 'Join' in root.name or 'HashAggregate' == root.name:
+            candidate_views.append(root)
+
+    candidate_views = []
+    get_candidate_view(root, candidate_views)
+    return candidate_views
 
 
 def accumulator(clz):

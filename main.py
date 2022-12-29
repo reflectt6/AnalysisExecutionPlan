@@ -14,4 +14,8 @@ if __name__ == '__main__':
         MetricNode.node_cache = get_node_metrics(metrics_text)
         complete_information(nodes)
         contribute_sql(MetricNode.node_cache.get('0'))
+        candidate_views = get_candidate_views(MetricNode.node_cache.get('0'))
+        sqls = []
+        for candidate_view in candidate_views:
+            sqls.append(generate_sql(candidate_view))
         print()
