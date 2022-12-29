@@ -363,19 +363,27 @@ def contribute_sql(root):
 
     if "Scan" in root.name:
         output = root.desc.get(Attribute.OUTPUT.value)
+        if isinstance(output, str):
+            output = [output]
         table = root.name.split(' ')[2]
+        if isinstance(table, str):
+            table = [table]
 
         if output is not None:
             root.contribute_sql[SQLContribute.SELECT.value] += output
-        root.contribute_sql[SQLContribute.FROM.value] += [table]
+        root.contribute_sql[SQLContribute.FROM.value] += table
         # TODO Partition Filter 和 Pushed Filter待解析
     elif "Filter" == root.name:
         condition = root.desc.get(Attribute.CONDITION.value)
+        if isinstance(condition, str):
+            condition = [condition]
 
         if condition is not None:
             root.contribute_sql[SQLContribute.WHERE.value] += condition
     elif "Project" == root.name:
         output = root.desc.get(Attribute.OUTPUT.value)
+        if isinstance(output, str):
+            output = [output]
 
         if output is not None:
             root.contribute_sql[SQLContribute.SELECT.value] = output
@@ -391,7 +399,7 @@ def contribute_sql(root):
                 conditions.append(left_keys + " = " + right_keys)
             else:
                 for i in range(len(left_keys)):
-                    conditions.append(left_keys[i] + " = " + right_keys)
+                    conditions.append(left_keys[i] + " = " + right_keys[i])
         if join_condition != 'None':
             conditions.append(join_condition)
 
@@ -403,7 +411,11 @@ def contribute_sql(root):
             generate_sql(MetricNode.node_cache.get(root.children_node[1])))
     elif "HashAggregate" == root.name:
         keys = root.desc.get(Attribute.KEYS.value)
+        if isinstance(keys, str):
+            keys = [keys]
         result = root.desc.get(Attribute.RESULT.value)
+        if isinstance(result, str):
+            result = [result]
 
         if keys is not None:
             root.contribute_sql[SQLContribute.GROUP_BY.value] = keys
@@ -411,7 +423,11 @@ def contribute_sql(root):
             root.contribute_sql[SQLContribute.SELECT.value] = result
     elif "TakeOrderedAndProject" == root.name:
         output = root.desc.get(Attribute.OUTPUT.value)
+        if isinstance(output, str):
+            output = [output]
         order_by = root.desc.get(Attribute.ORDER_BY.value)
+        if isinstance(order_by, str):
+            order_by = [order_by]
 
         if output is not None:
             root.contribute_sql[SQLContribute.SELECT.value] = output
@@ -535,6 +551,8 @@ def parse_bracket_list(string):
         for i in range(len(stan)):
             stan[i] = canonicalize(stan[i])
         # stan.sort()
+    else:
+        stan = [stan]
     return stan
 
 
