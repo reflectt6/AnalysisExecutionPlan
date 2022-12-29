@@ -353,12 +353,13 @@ def complete_information(nodes):
 def contribute_sql(root):
     children = root.children_node
     for child in children:
-        contribute_sql(child)
+        contribute_sql(MetricNode.node_cache.get(child))
 
     # copy child contribute_sql
     if isinstance(children, list) and len(children) == 1:
-        for key in children[0].contribute_sql.keys:
-            root.contribute_sql[key] = children[0].contribute_sql[key].copy()
+        child_ctr = MetricNode.node_cache.get(children[0]).contribute_sql
+        for key in child_ctr.keys():
+            root.contribute_sql[key] = child_ctr[key].copy()
 
     if "Scan" in root.name:
         output = root.desc.get(Attribute.OUTPUT.value)
@@ -394,10 +395,12 @@ def contribute_sql(root):
         if join_condition != 'None':
             conditions.append(join_condition)
 
-        root.contribute_sql[SQLContribute.JOIN_TYPE.value] = join_type
+        root.contribute_sql[SQLContribute.JOIN_TYPE.value] = [join_type]
         root.contribute_sql[SQLContribute.JOIN_CONDITION.value] = conditions
-        root.contribute_sql[SQLContribute.SUBQUERY.value].append(generate_sql(root.children_node[0]))
-        root.contribute_sql[SQLContribute.SUBQUERY.value].append(generate_sql(root.children_node[1]))
+        root.contribute_sql[SQLContribute.SUBQUERY.value].append(
+            generate_sql(MetricNode.node_cache.get(root.children_node[0])))
+        root.contribute_sql[SQLContribute.SUBQUERY.value].append(
+            generate_sql(MetricNode.node_cache.get(root.children_node[1])))
     elif "HashAggregate" == root.name:
         keys = root.desc.get(Attribute.KEYS.value)
         result = root.desc.get(Attribute.RESULT.value)
@@ -422,26 +425,7 @@ def contribute_sql(root):
 
 
 def generate_sql(node):
-    # 除了join的情况拼接
-    if len(node.contribute_sql[SQLContribute.SUBQUERY.value]) == 0:
-        # Select
-        sql = "SELECT "
-        select = node.contribute_sql[SQLContribute.SELECT.value]
-        if len(select) != 0:
-            for sel in select:
-                sql += sel + ", "
-        else:
-            sql += "*"
-        sql = canonicalize(sql) + ' '
-
-        # From
-        fromm = node.contribute_sql[SQLContribute.FROM.value]
-        sql += "FROM "
-        assert len(fromm) > 0
-        for fro in fromm:
-            sql += fro + ', '
-        sql = canonicalize(sql) + ' '
-
+    def general(node, sql):
         # Where
         where = node.contribute_sql[SQLContribute.WHERE.value]
         if len(where) > 0:
@@ -466,11 +450,32 @@ def generate_sql(node):
                 sql += o + ', '
             sql = canonicalize(sql)
         return canonicalize(sql)
+
+    if len(node.contribute_sql[SQLContribute.SUBQUERY.value]) == 0:
+        # 除了join的情况拼接
+        # Select
+        sql = "SELECT "
+        select = node.contribute_sql[SQLContribute.SELECT.value]
+        if len(select) != 0:
+            for sel in select:
+                sql += sel + ", "
+        else:
+            sql += "*"
+        sql = canonicalize(sql) + ' '
+
+        # From
+        fromm = node.contribute_sql[SQLContribute.FROM.value]
+        sql += "FROM "
+        assert len(fromm) > 0
+        for fro in fromm:
+            sql += fro + ', '
+        sql = canonicalize(sql) + ' '
+        return general(node, sql)
     else:
-        # TODO join拼接
+        # join场景拼接
         left_table = 'sub' + str(accumulator(MetricNode))
         right_table = 'sub' + str(accumulator(MetricNode))
-        join_type = node.contribute_sql[SQLContribute.JOIN_TYPE.value]
+        join_type = node.contribute_sql[SQLContribute.JOIN_TYPE.value][0]
         if 'Inner' in join_type:
             join_type = 'JOIN'
         elif 'LeftOuter' in join_type:
@@ -495,32 +500,9 @@ def generate_sql(node):
 
         # From
         sql += f'(' + node.contribute_sql[SQLContribute.SUBQUERY.value][0] + f') as {left_table} {join_type} (' + \
-              node.contribute_sql[SQLContribute.SUBQUERY.value][1] + f') as {right_table} '
+               node.contribute_sql[SQLContribute.SUBQUERY.value][1] + f') as {right_table} '
 
-        # Where
-        where = node.contribute_sql[SQLContribute.WHERE.value]
-        if len(where) > 0:
-            sql += "Where "
-            for w in where:
-                sql += w + ' and '
-            sql = canonicalize(sql) + ' '
-
-        # group by
-        group_by = node.contribute_sql[SQLContribute.GROUP_BY.value]
-        if len(group_by) > 0:
-            sql += "Group by "
-            for g in group_by:
-                sql += g + ', '
-            sql = canonicalize(sql) + ' '
-
-        # order by
-        order_by = node.contribute_sql[SQLContribute.ORDER_BY.value]
-        if len(order_by) > 0:
-            sql += "Order by "
-            for o in order_by:
-                sql += o + ', '
-            sql = canonicalize(sql)
-        return canonicalize(sql)
+        return general(node, sql)
 
 
 def accumulator(clz):

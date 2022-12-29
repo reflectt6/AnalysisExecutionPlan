@@ -11,7 +11,7 @@ if __name__ == '__main__':
         history_json_path = f"{HISTORY_JSON_PATH}/{log_name}.json"
         _, metrics_text, physical_plan, _, _ = get_history_json(history_json_path)
         nodes = get_node_structure(physical_plan)
-        metrics_nodes = get_node_metrics(metrics_text)
+        MetricNode.node_cache = get_node_metrics(metrics_text)
         complete_information(nodes)
-        contribute_sql(metrics_nodes.get(0))
+        contribute_sql(MetricNode.node_cache.get('0'))
         print()
