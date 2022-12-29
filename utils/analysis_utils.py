@@ -582,8 +582,12 @@ def canonicalize(item):
     :return:
     """
     if isinstance(item, str):
-        return item.strip('..., ').strip('and ').strip('...,').strip('...').strip('and') \
-            .strip(' :').strip(': ').strip(', ').strip(' ,').strip(' ').strip(',').strip(':')
+        item = item.strip('.,: ')
+        if item.endswith('and ') or item.endswith('AND '):
+            item = item[:-4]
+        if item.endswith('and') or item.endswith('AND'):
+            item = item[:-3]
+        return item
     else:
         return item
 
