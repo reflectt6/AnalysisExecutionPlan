@@ -9,6 +9,7 @@ class PhysicalPlanNode(object):
 
 
 class MetricNode(object):
+    union_cache = {}
     node_cache = {}
     accumulator = 0
 

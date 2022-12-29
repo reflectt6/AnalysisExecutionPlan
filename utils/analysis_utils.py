@@ -225,10 +225,10 @@ def parse_metrics_text(metrics):
                 "SubqueryBroadcast" == name or "ReusedExchange" == name:
             continue
         # cache
-        if MetricNode.node_cache.get(name) is None:
-            MetricNode.node_cache[name] = [ins_node]
+        if MetricNode.union_cache.get(name) is None:
+            MetricNode.union_cache[name] = [ins_node]
         else:
-            MetricNode.node_cache.get(name).append(ins_node)
+            MetricNode.union_cache.get(name).append(ins_node)
     return metric_nodes
 
 
@@ -327,7 +327,7 @@ def complete_information(nodes):
         num += 1
         toDels = []
         find = False
-        candidates_node = MetricNode.node_cache.get(node.name)
+        candidates_node = MetricNode.union_cache.get(node.name)
         if candidates_node is None:
             continue
         for candidate_node in candidates_node:
@@ -515,9 +515,9 @@ def generate_sql(node):
         sql = canonicalize(sql) + ' '
 
         # From
-        # sql += f'(' + node.contribute_sql[SQLContribute.SUBQUERY.value][0] + f') as {left_table} {join_type} (' + \
+        # sql += f'From (' + node.contribute_sql[SQLContribute.SUBQUERY.value][0] + f') as {left_table} {join_type} (' + \
         #        node.contribute_sql[SQLContribute.SUBQUERY.value][1] + f') as {right_table} '
-        sql += f'(' + node.contribute_sql[SQLContribute.SUBQUERY.value][0] + f') {join_type} (' + \
+        sql += f'From (' + node.contribute_sql[SQLContribute.SUBQUERY.value][0] + f') {join_type} (' + \
                node.contribute_sql[SQLContribute.SUBQUERY.value][1] + f') '
 
         return general(node, sql)
