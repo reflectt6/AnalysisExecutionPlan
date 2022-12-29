@@ -491,6 +491,7 @@ def generate_sql(node):
         # join场景拼接
         left_table = 'sub' + str(accumulator(MetricNode))
         right_table = 'sub' + str(accumulator(MetricNode))
+        join_condition = node.contribute_sql[SQLContribute.JOIN_CONDITION.value]
         join_type = node.contribute_sql[SQLContribute.JOIN_TYPE.value][0]
         if 'Inner' in join_type:
             join_type = 'JOIN'
@@ -519,6 +520,13 @@ def generate_sql(node):
         #        node.contribute_sql[SQLContribute.SUBQUERY.value][1] + f') as {right_table} '
         sql += f'From (' + node.contribute_sql[SQLContribute.SUBQUERY.value][0] + f') {join_type} (' + \
                node.contribute_sql[SQLContribute.SUBQUERY.value][1] + f') '
+
+        # Join condition
+        if len(join_condition) > 0:
+            sql += 'ON '
+            for condition in join_condition:
+                sql += condition + ' AND '
+            sql = canonicalize(sql)
 
         return general(node, sql)
 

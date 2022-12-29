@@ -15,7 +15,15 @@ if __name__ == '__main__':
         complete_information(nodes)
         contribute_sql(MetricNode.node_cache.get('0'))
         candidate_views = get_candidate_views(MetricNode.node_cache.get('0'))
+
         sqls = []
         for candidate_view in candidate_views:
             sqls.append(generate_sql(candidate_view))
+        for i in range(len(sqls)):
+            tmp = sqls[i]
+            res = re.search(r'#\d+L*', tmp)
+            while res is not None:
+                tmp = tmp.replace(res.group(), '')
+                res = re.search(r'#\d+L*', tmp)
+            sqls[i] = tmp
         print()
