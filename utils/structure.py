@@ -10,6 +10,7 @@ class PhysicalPlanNode(object):
 
 class MetricNode(object):
     node_cache = {}
+    accumulator = 0
 
     def __init__(self, nid, name, desc, time_info, desc_tag):
         self.nid = nid
@@ -19,6 +20,8 @@ class MetricNode(object):
         self.time_info = time_info
         self.children_node = []
         self.parents_node = []
+        self.contribute_sql = {'select': [], 'from': [], 'where': [], 'group by': [], 'order by': [],
+                               'subquery': [], 'join_type': []}
 
 
 class Attribute(Enum):
@@ -41,3 +44,14 @@ class Attribute(Enum):
     JOIN_TYPE = 'Join Type'
     ORDER_BY = 'orderby'
     LIMIT = 'limit'
+
+
+class SQLContribute(Enum):
+    SELECT = 'select'
+    FROM = 'from'
+    WHERE = 'where'
+    JOIN_CONDITION = 'join_condition'
+    GROUP_BY = 'group by'
+    ORDER_BY = 'order by'
+    SUBQUERY = 'subquery'
+    JOIN_TYPE = 'join_type'

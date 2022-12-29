@@ -13,4 +13,5 @@ if __name__ == '__main__':
         nodes = get_node_structure(physical_plan)
         metrics_nodes = get_node_metrics(metrics_text)
         complete_information(nodes)
+        contribute_sql(metrics_nodes.get(0))
         print()

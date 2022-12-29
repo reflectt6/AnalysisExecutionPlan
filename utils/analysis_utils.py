@@ -3,7 +3,7 @@ import subprocess
 import re
 import time
 
-from utils.structure import PhysicalPlanNode, MetricNode, Attribute
+from utils.structure import PhysicalPlanNode, MetricNode, Attribute, SQLContribute
 
 SECONDS_PER_MINUTE = 60
 
@@ -350,6 +350,184 @@ def complete_information(nodes):
                 print("[" + str(num) + "]Not matched: " + node.name)
 
 
+def contribute_sql(root):
+    children = root.children_node
+    for child in children:
+        contribute_sql(child)
+
+    # copy child contribute_sql
+    if isinstance(children, list) and len(children) == 1:
+        for key in children[0].contribute_sql.keys:
+            root.contribute_sql[key] = children[0].contribute_sql[key].copy()
+
+    if "Scan" in root.name:
+        output = root.desc.get(Attribute.OUTPUT.value)
+        table = root.name.split(' ')[2]
+
+        if output is not None:
+            root.contribute_sql[SQLContribute.SELECT.value] += output
+        root.contribute_sql[SQLContribute.FROM.value] += [table]
+        # TODO Partition Filter 和 Pushed Filter待解析
+    elif "Filter" == root.name:
+        condition = root.desc.get(Attribute.CONDITION.value)
+
+        if condition is not None:
+            root.contribute_sql[SQLContribute.WHERE.value] += condition
+    elif "Project" == root.name:
+        output = root.desc.get(Attribute.OUTPUT.value)
+
+        if output is not None:
+            root.contribute_sql[SQLContribute.SELECT.value] = output
+    elif "SortMergeJoin" == root.name or "BroadcastHashJoin" == root.name:
+        join_type = root.desc.get(Attribute.JOIN_TYPE.value)
+        left_keys = root.desc.get(Attribute.LEFT_KEYS.value)
+        right_keys = root.desc.get(Attribute.RIGHT_KEYS.value)
+        join_condition = root.desc.get(Attribute.JOIN_CONDITION.value)
+        assert join_type is not None
+        conditions = []
+        if left_keys is not None and right_keys is not None:
+            if isinstance(left_keys, str):
+                conditions.append(left_keys + " = " + right_keys)
+            else:
+                for i in range(len(left_keys)):
+                    conditions.append(left_keys[i] + " = " + right_keys)
+        if join_condition != 'None':
+            conditions.append(join_condition)
+
+        root.contribute_sql[SQLContribute.JOIN_TYPE.value] = join_type
+        root.contribute_sql[SQLContribute.JOIN_CONDITION.value] = conditions
+        root.contribute_sql[SQLContribute.SUBQUERY.value].append(generate_sql(root.children_node[0]))
+        root.contribute_sql[SQLContribute.SUBQUERY.value].append(generate_sql(root.children_node[1]))
+    elif "HashAggregate" == root.name:
+        keys = root.desc.get(Attribute.KEYS.value)
+        result = root.desc.get(Attribute.RESULT.value)
+
+        if keys is not None:
+            root.contribute_sql[SQLContribute.GROUP_BY.value] = keys
+        if result is not None:
+            root.contribute_sql[SQLContribute.SELECT.value] = result
+    elif "TakeOrderedAndProject" == root.name:
+        output = root.desc.get(Attribute.OUTPUT.value)
+        order_by = root.desc.get(Attribute.ORDER_BY.value)
+
+        if output is not None:
+            root.contribute_sql[SQLContribute.SELECT.value] = output
+        if order_by is not None:
+            root.contribute_sql[SQLContribute.ORDER_BY.value] = order_by
+    elif "Union" == root.name:
+        # TODO
+        print("Union TODO")
+    else:
+        print_err_info(f"[node ignore] {root.name} can not be deal.")
+
+
+def generate_sql(node):
+    # 除了join的情况拼接
+    if len(node.contribute_sql[SQLContribute.SUBQUERY.value]) == 0:
+        # Select
+        sql = "SELECT "
+        select = node.contribute_sql[SQLContribute.SELECT.value]
+        if len(select) != 0:
+            for sel in select:
+                sql += sel + ", "
+        else:
+            sql += "*"
+        sql = canonicalize(sql) + ' '
+
+        # From
+        fromm = node.contribute_sql[SQLContribute.FROM.value]
+        sql += "FROM "
+        assert len(fromm) > 0
+        for fro in fromm:
+            sql += fro + ', '
+        sql = canonicalize(sql) + ' '
+
+        # Where
+        where = node.contribute_sql[SQLContribute.WHERE.value]
+        if len(where) > 0:
+            sql += "Where "
+            for w in where:
+                sql += w + ' and '
+            sql = canonicalize(sql) + ' '
+
+        # group by
+        group_by = node.contribute_sql[SQLContribute.GROUP_BY.value]
+        if len(group_by) > 0:
+            sql += "Group by "
+            for g in group_by:
+                sql += g + ', '
+            sql = canonicalize(sql) + ' '
+
+        # order by
+        order_by = node.contribute_sql[SQLContribute.ORDER_BY.value]
+        if len(order_by) > 0:
+            sql += "Order by "
+            for o in order_by:
+                sql += o + ', '
+            sql = canonicalize(sql)
+        return canonicalize(sql)
+    else:
+        # TODO join拼接
+        left_table = 'sub' + str(accumulator(MetricNode))
+        right_table = 'sub' + str(accumulator(MetricNode))
+        join_type = node.contribute_sql[SQLContribute.JOIN_TYPE.value]
+        if 'Inner' in join_type:
+            join_type = 'JOIN'
+        elif 'LeftOuter' in join_type:
+            join_type = 'LEFT JOIN'
+        elif 'LeftSemi' in join_type:
+            join_type = 'SEMI JOIN'
+        elif 'LeftAnti' in join_type:
+            join_type = 'ANTI JOIN'
+        elif 'FullOuter' in join_type:
+            join_type = 'FULL JOIN'
+        else:
+            print_err_info(join_type + 'is not supported.')
+        # Select
+        sql = "SELECT "
+        select = node.contribute_sql[SQLContribute.SELECT.value]
+        if len(select) != 0:
+            for sel in select:
+                sql += sel + ", "
+        else:
+            sql += "*"
+        sql = canonicalize(sql) + ' '
+
+        # From
+        sql += f'(' + node.contribute_sql[SQLContribute.SUBQUERY.value][0] + f') as {left_table} {join_type} (' + \
+              node.contribute_sql[SQLContribute.SUBQUERY.value][1] + f') as {right_table} '
+
+        # Where
+        where = node.contribute_sql[SQLContribute.WHERE.value]
+        if len(where) > 0:
+            sql += "Where "
+            for w in where:
+                sql += w + ' and '
+            sql = canonicalize(sql) + ' '
+
+        # group by
+        group_by = node.contribute_sql[SQLContribute.GROUP_BY.value]
+        if len(group_by) > 0:
+            sql += "Group by "
+            for g in group_by:
+                sql += g + ', '
+            sql = canonicalize(sql) + ' '
+
+        # order by
+        order_by = node.contribute_sql[SQLContribute.ORDER_BY.value]
+        if len(order_by) > 0:
+            sql += "Order by "
+            for o in order_by:
+                sql += o + ', '
+            sql = canonicalize(sql)
+        return canonicalize(sql)
+
+
+def accumulator(clz):
+    clz.accumulator = clz.accumulator + 1
+    return clz.accumulator
+
+
 def build_tree_with_edge_text(edge, metric_nodes):
     item = re.search(r"\d+->\d+", edge)
     while item is not None:
@@ -389,8 +567,8 @@ def canonicalize(item):
     :return:
     """
     if isinstance(item, str):
-        return item.strip('..., ').strip('...,').strip('...').strip(' :') \
-            .strip(': ').strip(', ').strip(' ,').strip(' ').strip(',').strip(':')
+        return item.strip('..., ').strip('and ').strip('...,').strip('...').strip('and') \
+            .strip(' :').strip(': ').strip(', ').strip(' ,').strip(' ').strip(',').strip(':')
     else:
         return item
 
