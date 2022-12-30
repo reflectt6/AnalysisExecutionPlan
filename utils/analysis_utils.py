@@ -491,6 +491,7 @@ def remove_list_number(l):
     if isinstance(l, list):
         for i in range(len(l)):
             l[i] = remove_str_number(l[i])
+    return l
 
 
 def generate_sql(node):
