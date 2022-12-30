@@ -489,7 +489,7 @@ def remove_str_number(sql):
 
 def remove_list_number(l):
     if isinstance(l, list):
-        for i in len(l):
+        for i in range(len(l)):
             l[i] = remove_str_number(l[i])
 
 
