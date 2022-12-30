@@ -22,7 +22,9 @@ class MetricNode(object):
         self.children_node = []
         self.parents_node = []
         self.contribute_sql = {'select': [], 'from': [], 'where': [], 'group by': [], 'order by': [],
-                               'subquery': [], 'join_type': []}
+                               'subquery': [], 'join_type': [], 'join_condition': []}
+        self.sql = ''
+        self.accumulate_contribute = {'select': [], 'from': [], 'where': [], 'group by': [], 'order by': []}
 
 
 class Attribute(Enum):

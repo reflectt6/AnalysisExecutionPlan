@@ -400,7 +400,7 @@ def contribute_sql(root):
             else:
                 for i in range(len(left_keys)):
                     conditions.append(left_keys[i] + " = " + right_keys[i])
-        if join_condition != 'None':
+        if join_condition is not None:
             conditions.append(join_condition)
 
         root.contribute_sql[SQLContribute.JOIN_TYPE.value] = [join_type]
@@ -438,6 +438,50 @@ def contribute_sql(root):
         print("Union TODO")
     else:
         print_err_info(f"[node ignore] {root.name} can not be deal.")
+
+
+def accumulate_to_join(root):
+    def accumulate(target, src):
+        target[SQLContribute.SELECT.value] += src[SQLContribute.SELECT.value]
+        target[SQLContribute.FROM.value] += src[SQLContribute.FROM.value]
+        target[SQLContribute.WHERE.value] += src[SQLContribute.WHERE.value]
+        target[SQLContribute.GROUP_BY.value] += src[SQLContribute.GROUP_BY.value]
+        target[SQLContribute.ORDER_BY.value] += src[SQLContribute.ORDER_BY.value]
+
+    accumulate(root.accumulate_contribute, root.contribute_sql)
+    if len(root.children_node) == 0:
+        return root.accumulate_contribute
+
+    if 'Join' in root.name:
+        for child in root.children_node:
+            accumulate_to_join(MetricNode.node_cache.get(child))
+    elif 'Union' in root.name:
+        for child in root.children_node:
+            accumulate(root.accumulate_contribute, accumulate_to_join(MetricNode.node_cache.get(child)))
+    else:
+        accumulate(root.accumulate_contribute, accumulate_to_join(MetricNode.node_cache.get(root.children_node[0])))
+    return root.accumulate_contribute
+
+
+def fill_sql(candidate_views):
+    """
+    给候选视图node节点填充sql字符串
+    :return: 某个sql的所有候选sql
+    """
+
+    def remove_d(sql):
+        res = re.search(r'#\d+L*', sql)
+        while res is not None:
+            sql = sql.replace(res.group(), '')
+            res = re.search(r'#\d+L*', sql)
+        return sql
+
+    sqls = []
+    for candidate_view in candidate_views:
+        gen_sql = generate_sql(candidate_view)
+        candidate_view.sql = remove_d(gen_sql)
+        sqls.append(gen_sql)
+    return sqls
 
 
 def generate_sql(node):
