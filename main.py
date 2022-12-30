@@ -17,7 +17,23 @@ if __name__ == '__main__':
         contribute_sql(MetricNode.node_cache.get('0'))
         candidate_views = get_candidate_views(MetricNode.node_cache.get('0'))
         sqls = fill_sql(candidate_views)
-        accumulate_to_join(MetricNode.node_cache.get('0'))
+        accumulate_all(MetricNode.node_cache.get('0'))
         all_candidate_views += candidate_views
         print()
-
+    views_set = set(all_candidate_views)
+    count = {}
+    for view1 in all_candidate_views:
+        if view1 not in views_set:
+            continue
+        for view2 in all_candidate_views:
+            if view1 == view2:
+                continue
+            res = compare_view(view1, view2)
+            if res is True:
+                views_set.remove(view2)
+                if count.get(view1) is None:
+                    count[view1] = 1
+                else:
+                    count[view1] = count[view1] + 1
+                print("[remove view]")
+    print()

@@ -440,13 +440,15 @@ def contribute_sql(root):
         print_err_info(f"[node ignore] {root.name} can not be deal.")
 
 
-def accumulate_to_join(root):
+def accumulate_all(root):
     def accumulate(target, src):
         target[SQLContribute.SELECT.value] += src[SQLContribute.SELECT.value]
         target[SQLContribute.FROM.value] += src[SQLContribute.FROM.value]
         target[SQLContribute.WHERE.value] += src[SQLContribute.WHERE.value]
         target[SQLContribute.GROUP_BY.value] += src[SQLContribute.GROUP_BY.value]
         target[SQLContribute.ORDER_BY.value] += src[SQLContribute.ORDER_BY.value]
+        target[SQLContribute.JOIN_TYPE.value] += src[SQLContribute.JOIN_TYPE.value]
+        target[SQLContribute.JOIN_CONDITION.value] += src[SQLContribute.JOIN_CONDITION.value]
 
     accumulate(root.accumulate_contribute, root.contribute_sql)
     if len(root.children_node) == 0:
@@ -454,12 +456,12 @@ def accumulate_to_join(root):
 
     if 'Join' in root.name:
         for child in root.children_node:
-            accumulate_to_join(MetricNode.node_cache.get(child))
+            accumulate(root.accumulate_contribute, accumulate_all(MetricNode.node_cache.get(child)))
     elif 'Union' in root.name:
         for child in root.children_node:
-            accumulate(root.accumulate_contribute, accumulate_to_join(MetricNode.node_cache.get(child)))
+            accumulate(root.accumulate_contribute, accumulate_all(MetricNode.node_cache.get(child)))
     else:
-        accumulate(root.accumulate_contribute, accumulate_to_join(MetricNode.node_cache.get(root.children_node[0])))
+        accumulate(root.accumulate_contribute, accumulate_all(MetricNode.node_cache.get(root.children_node[0])))
     return root.accumulate_contribute
 
 
@@ -655,3 +657,27 @@ def get_attribute_enum(string):
             if string.lower() == attr.value.lower():
                 return attr
     return None
+
+
+def compare_view(view1, view2):
+    compare_from = len(set(view1.accumulate_contribute[SQLContribute.FROM.value]) ^ set(
+        view2.accumulate_contribute[SQLContribute.FROM.value]))
+    compare_group_by = len(set(view1.accumulate_contribute[SQLContribute.GROUP_BY.value]) ^ set(
+        view2.accumulate_contribute[SQLContribute.GROUP_BY.value]))
+    compare_order_by = len(set(view1.accumulate_contribute[SQLContribute.ORDER_BY.value]) ^ set(
+        view2.accumulate_contribute[SQLContribute.ORDER_BY.value]))
+    compare_join_type = len(set(view1.accumulate_contribute[SQLContribute.JOIN_TYPE.value]) ^ set(
+        view2.accumulate_contribute[SQLContribute.JOIN_TYPE.value]))
+    compare_join_condition = len(set(view1.accumulate_contribute[SQLContribute.JOIN_CONDITION.value]) ^ set(
+        view2.accumulate_contribute[SQLContribute.JOIN_CONDITION.value]))
+    if compare_from != 0 or compare_order_by != 0 or compare_group_by != 0 or \
+            compare_join_type != 0 or compare_join_condition != 0:
+        return False
+    select = set(view1.accumulate_contribute[SQLContribute.SELECT.value]) | set(
+        view2.accumulate_contribute[SQLContribute.SELECT.value])
+    where = set(view1.accumulate_contribute[SQLContribute.WHERE.value]) & set(
+        view2.accumulate_contribute[SQLContribute.WHERE.value])
+    view1.contribute_sql[SQLContribute.SELECT.value] = select
+    view1.contribute_sql[SQLContribute.WHERE.value] = where
+    view1.sql = generate_sql(view1)
+    return True

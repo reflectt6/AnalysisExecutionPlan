@@ -24,7 +24,8 @@ class MetricNode(object):
         self.contribute_sql = {'select': [], 'from': [], 'where': [], 'group by': [], 'order by': [],
                                'subquery': [], 'join_type': [], 'join_condition': []}
         self.sql = ''
-        self.accumulate_contribute = {'select': [], 'from': [], 'where': [], 'group by': [], 'order by': []}
+        self.accumulate_contribute = {'select': [], 'from': [], 'where': [], 'group by': [], 'order by': [],
+                                      'join_type': [], 'join_condition': []}
 
 
 class Attribute(Enum):
