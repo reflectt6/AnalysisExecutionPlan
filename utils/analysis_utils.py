@@ -442,13 +442,13 @@ def contribute_sql(root):
 
 def accumulate_all(root):
     def accumulate(target, src):
-        target[SQLContribute.SELECT.value] += src[SQLContribute.SELECT.value]
-        target[SQLContribute.FROM.value] += src[SQLContribute.FROM.value]
-        target[SQLContribute.WHERE.value] += src[SQLContribute.WHERE.value]
-        target[SQLContribute.GROUP_BY.value] += src[SQLContribute.GROUP_BY.value]
-        target[SQLContribute.ORDER_BY.value] += src[SQLContribute.ORDER_BY.value]
-        target[SQLContribute.JOIN_TYPE.value] += src[SQLContribute.JOIN_TYPE.value]
-        target[SQLContribute.JOIN_CONDITION.value] += src[SQLContribute.JOIN_CONDITION.value]
+        target[SQLContribute.SELECT.value] += remove_list_number(src[SQLContribute.SELECT.value])
+        target[SQLContribute.FROM.value] += remove_list_number(src[SQLContribute.FROM.value])
+        target[SQLContribute.WHERE.value] += remove_list_number(src[SQLContribute.WHERE.value])
+        target[SQLContribute.GROUP_BY.value] += remove_list_number(src[SQLContribute.GROUP_BY.value])
+        target[SQLContribute.ORDER_BY.value] += remove_list_number(src[SQLContribute.ORDER_BY.value])
+        target[SQLContribute.JOIN_TYPE.value] += remove_list_number(src[SQLContribute.JOIN_TYPE.value])
+        target[SQLContribute.JOIN_CONDITION.value] += remove_list_number(src[SQLContribute.JOIN_CONDITION.value])
 
     accumulate(root.accumulate_contribute, root.contribute_sql)
     if len(root.children_node) == 0:
@@ -471,19 +471,26 @@ def fill_sql(candidate_views):
     :return: 某个sql的所有候选sql
     """
 
-    def remove_d(sql):
-        res = re.search(r'#\d+L*', sql)
-        while res is not None:
-            sql = sql.replace(res.group(), '')
-            res = re.search(r'#\d+L*', sql)
-        return sql
-
     sqls = []
     for candidate_view in candidate_views:
         gen_sql = generate_sql(candidate_view)
-        candidate_view.sql = remove_d(gen_sql)
+        candidate_view.sql = remove_str_number(gen_sql)
         sqls.append(gen_sql)
     return sqls
+
+
+def remove_str_number(sql):
+    res = re.search(r'#\d+L*', sql)
+    while res is not None:
+        sql = sql.replace(res.group(), '')
+        res = re.search(r'#\d+L*', sql)
+    return sql
+
+
+def remove_list_number(l):
+    if isinstance(l, list):
+        for i in len(l):
+            l[i] = remove_str_number(l[i])
 
 
 def generate_sql(node):
