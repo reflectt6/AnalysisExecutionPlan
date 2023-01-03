@@ -521,6 +521,9 @@ def generate_sql(node):
             sql = canonicalize(sql)
         return canonicalize(sql)
 
+    if "WholeStageCodegen" in node.name or "Sort" == node.name or \
+            "SubqueryBroadcast" == node.name or "ReusedExchange" == node.name:
+        return generate_sql(MetricNode.node_cache.get(node.children_node[0]))
     if len(node.contribute_sql[SQLContribute.SUBQUERY.value]) == 0:
         # 除了join的情况拼接
         # Select
