@@ -11,6 +11,8 @@ if __name__ == '__main__':
     for log_name in logs_name:
         history_json_path = f"{HISTORY_JSON_PATH}/{log_name}.json"
         _, metrics_text, physical_plan, _, _ = get_history_json(history_json_path)
+        if metrics_text == '':
+            print_err_info(f'[empty history] {history_json_path} is empty.')
         nodes = get_node_structure(physical_plan)
         MetricNode.node_cache = get_node_metrics(metrics_text)
         complete_information(nodes)

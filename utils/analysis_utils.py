@@ -434,8 +434,9 @@ def contribute_sql(root):
         if order_by is not None:
             root.contribute_sql[SQLContribute.ORDER_BY.value] = order_by
     elif "Union" == root.name:
-        # TODO
-        print("Union TODO")
+        # TODO Union
+        for child in root.children_node:
+            root.contribute_sql[SQLContribute.UNION_QUERY.value] = generate_sql(MetricNode.node_cache.get(child))
     else:
         print_err_info(f"[node ignore] {root.name} can not be deal.")
 
@@ -521,10 +522,13 @@ def generate_sql(node):
             sql = canonicalize(sql)
         return canonicalize(sql)
 
-    if "WholeStageCodegen" in node.name or "Sort" == node.name or \
-            "SubqueryBroadcast" == node.name or "ReusedExchange" == node.name:
-        return generate_sql(MetricNode.node_cache.get(node.children_node[0]))
-    if len(node.contribute_sql[SQLContribute.SUBQUERY.value]) == 0:
+    if len(node.contribute_sql[SQLContribute.UNION_QUERY.value]) != 0:
+        # Union 拼接
+        sql = node.contribute_sql[SQLContribute.UNION_QUERY.value][0]
+        for index in range(1, len(node.contribute_sql[SQLContribute.UNION_QUERY.value])):
+            sql += ' Union ' + node.contribute_sql[SQLContribute.UNION_QUERY.value][index]
+        return sql
+    elif len(node.contribute_sql[SQLContribute.SUBQUERY.value]) == 0:
         # 除了join的情况拼接
         # Select
         sql = "SELECT "

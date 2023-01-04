@@ -22,7 +22,7 @@ class MetricNode(object):
         self.children_node = []
         self.parents_node = []
         self.contribute_sql = {'select': [], 'from': [], 'where': [], 'group by': [], 'order by': [],
-                               'subquery': [], 'join_type': [], 'join_condition': []}
+                               'subquery': [], 'join_type': [], 'join_condition': [], 'union_query': []}
         self.sql = ''
         self.accumulate_contribute = {'select': [], 'from': [], 'where': [], 'group by': [], 'order by': [],
                                       'join_type': [], 'join_condition': []}
@@ -59,3 +59,4 @@ class SQLContribute(Enum):
     ORDER_BY = 'order by'
     SUBQUERY = 'subquery'
     JOIN_TYPE = 'join_type'
+    UNION_QUERY = 'union_query'
