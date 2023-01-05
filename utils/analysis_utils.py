@@ -356,7 +356,7 @@ def contribute_sql(root):
         contribute_sql(MetricNode.node_cache.get(child))
 
     # copy child contribute_sql
-    if isinstance(children, list) and len(children) == 1:
+    if isinstance(children, list) and len(children) > 0:
         child_ctr = MetricNode.node_cache.get(children[0]).contribute_sql
         for key in child_ctr.keys():
             root.contribute_sql[key] = child_ctr[key].copy()
@@ -436,7 +436,7 @@ def contribute_sql(root):
     elif "Union" == root.name:
         # TODO Union
         for child in root.children_node:
-            root.contribute_sql[SQLContribute.UNION_QUERY.value] = generate_sql(MetricNode.node_cache.get(child))
+            root.contribute_sql[SQLContribute.UNION_QUERY.value].append(generate_sql(MetricNode.node_cache.get(child)))
     else:
         print_err_info(f"[node ignore] {root.name} can not be deal.")
 
